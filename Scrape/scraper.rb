@@ -12,6 +12,7 @@ def download_files_from_URLs(target_dir, links, override, file_in_names, thread_
 
   uri = URI(current_link)
   working_dir = Dir.pwd
+  Dir.mkdir(target_dir) unless File.exists?(target_dir)
   # create_directory(target_dir)
   Dir.chdir(target_dir)
 
@@ -24,8 +25,12 @@ def download_files_from_URLs(target_dir, links, override, file_in_names, thread_
   threads = thread_count.times.map do
     Thread.new do
       Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == 'https') do |http|
-        while !queue.empty? && url = queue.pop
+        while !queue.empty?
+          url = queue.pop
           name = name_queue.pop unless name_queue.empty?
+          if (url == nil)
+            next
+          end
           if(name == "" || name == "Slides")
             # Extract file name using this snippet found on SO
             begin
@@ -41,10 +46,29 @@ def download_files_from_URLs(target_dir, links, override, file_in_names, thread_
           if (File.exists?(name))
             print "Skip, #{name} already exists\n"
           else
+
+            # request = Net::HTTP::Post.new(uri + '/ldap-login')
+            # request.basic_auth(ENV['IC_USERNAME'], ENV['IC_PASSWORD'])
+            # request.set_form_data(:tlogin_netid => ENV['IC_USERNAME'], :tlogin_password => ENV['IC_PASSWORD'])
+            # response = http.request request
+
             request = Net::HTTP::Get.new(url)
-            # request.basic_auth($student.username, $student.password)
             http.request request do |response|
               case response
+              when Net::HTTPRedirection
+                req = Net::HTTP::Post.new(response['location'])
+                req.set_form_data(:tlogin_netid => ENV['IC_USERNAME'], :tlogin_password => ENV['IC_PASSWORD'])
+                http.request req do |res|
+                  case res
+                  when Net::HTTPOK
+                    print "Fetching #{name}\n"
+                    File.open(name, 'w') do |file_out|
+                      res.read_body do |chunk|
+                        file_out << chunk
+                      end
+                    end
+                  end
+                end
               when Net::HTTPOK
                   print "Fetching #{name}\n"
                   File.open(name, 'w') do |file_out|
@@ -54,6 +78,8 @@ def download_files_from_URLs(target_dir, links, override, file_in_names, thread_
                   end
               when Net::HTTPNotFound
                 # Do nothing
+              when Net::HTTPNetworkAuthenticationRequired
+                puts "Wrong credentials"
               end
             end
           end
@@ -62,7 +88,7 @@ def download_files_from_URLs(target_dir, links, override, file_in_names, thread_
     end
   end
   threads.each(&:join)
-  # Dir.chdir(working_dir)
+  Dir.chdir(working_dir)
 end   # End of download_file_from_url
 
 def wikipedia_scrape(agent, list_url)
@@ -96,23 +122,22 @@ def spiral_scrape(agent, base_url)
   search_by_title = engineering_page.parser.xpath('//a[contains(@href, "/browse?type=title")]').map { |link| link['href'] }
   alphabetical_search_page = agent.get(faculty_pages[0] + search_by_title[0])
 
-  paper_pages = alphabetical_search_page.parser.xpath('//tr//a')
+  paper_urls = alphabetical_search_page.parser.xpath('//tr//td//a')
+
+  paper_pages = paper_urls.map { |link| link['href'] }
+  paper_names = paper_urls.map { |link| link.text.strip }
   paper_links = Array.new
-  names = Array.new
+
   paper_pages.each do |p|
-    paper_page = agent.get(faculty_pages[0] + p['href'])
-    # paper_link = paper_page.parser.xpath('//a[contains(text(), "Download")]').map { |link| link['href'] }
-    paper_link = paper_page.parser.xpath('//a[contains(@href, "/bitstream")]')
-    if (paper_link[0] != nil)
-      paper_links << paper_link[0]['href']
-      names << paper_link[0].text()
-    # else
-      # paper_links << paper_link[1]['href']
-      # names << paper_link[1].text()
-    end
-    # names << paper_link['title']
+    paper_url = base_url.concat(p)
+    agent.add_auth(paper_url, ENV['IC_USERNAME'], ENV['IC_PASSWORD'])
+    paper_page = agent.get(paper_url)
+    paper_link = paper_page.parser.xpath('//a[contains(text(), "Download")]').map { |link| link['href'] }
+    paper_links << paper_link[0]
   end
-  download_files_from_URLs(Dir.pwd, paper_links, false, names, 4, alphabetical_search_page.uri)
+  # puts paper_names
+  # puts
+  download_files_from_URLs("PDF", paper_links, false, paper_names, 4, alphabetical_search_page.uri)
   # puts alphabetical_search.uri.to_s
 end
 
@@ -121,6 +146,16 @@ def main
   base_wikipedia_url = "https://en.wikipedia.org"
   base_spiral_repo_url = "https://spiral.imperial.ac.uk/"
   list_url = "#{base_wikipedia_url}/wiki/Marie_Curie";
+  login = agent.get("https://spiral.imperial.ac.uk/ldap-login")
+
+  form = login.form_with(:id => 'loginform')
+  username_field = form.field_with(:id => 'tlogin_netid')
+  username_field.value = ENV['IC_USERNAME']
+  password_field = form.field_with(:id => 'tlogin_password')
+  password_field.value = ENV['IC_PASSWORD']
+  button = form.button_with(:name => 'login_submit')
+
+  loggedin_page = form.submit(button)
   spiral_scrape(agent, base_spiral_repo_url)
   # wikipedia_scrape(agent, list_url)
 end
