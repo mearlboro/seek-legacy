@@ -1,5 +1,6 @@
 # This script requires the textract package,
 # which you can download following http://textract.readthedocs.org/en/latest/installation.html
+# When installing (on Linux) make sure to remove ffmpeg from command line
 import os
 import sys
 import textract
@@ -14,10 +15,11 @@ if len(sys.argv) > 1 :
     if len(sys.argv) > 2 :
         dst = sys.argv[2]
 
-filepath, file_ext = os.path.splitext('src')
-filename = os.path.basename(filepath)
-
-text = textract.process(src)
-f = open(dst + '/' + filename + '.txt', 'w+')
-f.write(text)
-f.close()
+for root, dirs, files in os.walk(src, True) :
+    print 'stepped into ' + root
+    for name in files :
+        filename, file_ext = os.path.splitext(name)
+        text = textract.process(os.path.join(root, name))
+        f = open(dst + '/' + filename + '.txt', 'w+')
+        f.write(text)
+        f.close()
