@@ -1,4 +1,10 @@
 #!/usr/bin/env ruby
+begin
+  gem 'mechanize', ">=2.7"
+rescue Gem::LoadError => e
+  system("sudo gem install mechanize")
+  Gem.clear_paths
+end
 
 require 'open-uri'
 require 'mechanize'
