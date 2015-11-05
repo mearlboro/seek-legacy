@@ -43,10 +43,12 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
               name = File.basename(URI.parse(url.to_s).path)
             end
           end
-          # if (File.extname(name) == "")
-          #   name.concat(".pdf")
-          # end
-          name = name.gsub(/[\/% ]%/, "")
+          if (File.extname(name) == ".ps")
+            # name.concat(".pdf")
+            next
+          end
+          name = name.gsub(/[\% ]/, "")
+
           if (File.exists?(name))
             copies = Dir.glob("{#{name}}")
             name = name + "(#{copies.length})"
