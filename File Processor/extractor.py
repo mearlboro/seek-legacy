@@ -26,7 +26,10 @@ for root, dirs, files in os.walk('.', True) :
     for filename in files:
         path = os.path.join(root, filename)
         name, file_ext = os.path.splitext(filename)
-        text = textract.process(path)
+        try:
+            text = textract.process(path)
+        except TypeError:
+            next
         print "Converting " + filename
         f = open(dst + '/' + name + '.txt', 'w')
         f.write(text)
