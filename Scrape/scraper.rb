@@ -31,7 +31,6 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
         while !queue.empty?
           url = queue.pop
           name = name_queue.pop unless name_queue.empty?
-          name = name.gsub("/", "")
           if (url == nil)
             next
           end
@@ -47,16 +46,18 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
           # if (File.extname(name) == "")
           #   name.concat(".pdf")
           # end
+          name = name.gsub(/[\/% ]%/, "")
           if (File.exists?(name))
-            print "Skip, #{name} already exists\n"
-          else
+            copies = Dir.glob("{#{name}}")
+            name = name + "(#{copies.length})"
+          end
+            # print "Skip, #{name} already exists\n"
+          # else
             # uri_url = URI(url)
             # if (uri_url.host == nil)
             #   url = current_link + url
             # end
             # uri_url = URI(url)
-            puts name
-            puts url
             request = Net::HTTP::Get.new(url)
             request.basic_auth(ENV['IC_USERNAME'], ENV['IC_PASSWORD'])
             http.request request do |response|
@@ -76,7 +77,7 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
                 puts "Wrong credentials"
               end
             end
-          end
+          # end
         end
       end
     end
@@ -134,7 +135,8 @@ def scrape_search_page(agent, alphabetical_search_page, base_url)
   paper_tags = alphabetical_search_page.parser.xpath('//tr//td//a')
 
   paper_urls = paper_tags.map { |link| link['href'] }
-  paper_names = paper_tags.map { |link| link.text.strip }
+  # paper_names = paper_tags.map { |link| link.text.strip }
+  paper_names = Array.new(paper_urls.length).fill("")
 
   paper_links = Array.new
 
@@ -145,12 +147,13 @@ def scrape_search_page(agent, alphabetical_search_page, base_url)
     paper_link = paper_page.parser.xpath('//a[contains(text(), "Download")]').map { |link| link['href'] }
     paper_links << paper_link[0]
   end
-  download_files_from_URLs(agent, Dir.pwd, paper_links, false, paper_names, 4, URI(base_url))
+  download_files_from_URLs(agent, Dir.pwd, paper_links, false, paper_names, 100, URI(base_url))
 end
 
 def main
   agent = Mechanize.new
   working_dir = Dir.pwd
+  Dir.mkdir("PDF") unless File.exists?("PDF")
   Dir.chdir("PDF")
   base_wikipedia_url = "https://en.wikipedia.org"
   base_spiral_repo_url = "https://spiral.imperial.ac.uk/"
@@ -167,6 +170,7 @@ def main
   loggedin_page = form.submit(button)
   spiral_scrape(agent, base_spiral_repo_url)
   Dir.chdir(working_dir)
+
   # wikipedia_scrape(agent, list_url)
 end
 
@@ -190,6 +194,5 @@ module FormatMethods
     return text.gsub("\t\n ", "").strip
   end
 end
-
 
 main
