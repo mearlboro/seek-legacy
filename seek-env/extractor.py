@@ -5,7 +5,7 @@ import textract
 # Use script by calling $ python extractor.py <source> <destination>
 # By default destination folder is set to /deep-shit/Raw Text
 
-if len(sys.argv) == 1 : 
+if len(sys.argv) == 1 :
     print("extractor expects the following command \n extractor.py <src> \n extractor.py <src> <dest>")
     sys.exit(0)
 dst = os.getcwd() + '/txt'
@@ -16,6 +16,7 @@ if len(sys.argv) > 1 :
 
 filepath, file_ext = os.path.splitext(src)
 filename = os.path.basename(filepath)
+print("Converting " + filename)
 try:
     text = textract.process(src)
 except TypeError:

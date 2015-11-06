@@ -17,10 +17,6 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
   include FormatMethods
 
   uri = URI(current_link)
-  # working_dir = Dir.pwd
-  # Dir.mkdir(target_dir) unless File.exists?(target_dir)
-  # create_directory(target_dir)
-  # Dir.chdir(target_dir)
 
   queue = Queue.new
   name_queue = Queue.new
@@ -31,9 +27,6 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
   threads = thread_count.times.map do
     Thread.new do
       Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == 'https') do |http|
-        # req = Net::HTTP::Post.new("https://spiral.imperial.ac.uk/ldap-login")
-        # req.set_form_data(:tlogin_netid => ENV['IC_USERNAME'], :tlogin_password => ENV['IC_PASSWORD'])
-        # http.request req
         while !queue.empty?
           url = queue.pop
           name = name_queue.pop unless name_queue.empty?
@@ -45,27 +38,17 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
             begin
               name = url.meta['content-disposition'].match(/filename=(\"?)(.+)\1/)[2]
             rescue Exception => e
-              # puts "Unable to find file name" + e.message
               name = File.basename(URI.parse(url.to_s).path)
             end
           end
           if (File.extname(name) == ".ps")
-            # name.concat(".pdf")
             next
           end
           name = name.gsub(/[\% ]/, "")
 
           if (File.exists?(name))
-            copies = Dir.glob("{#{name}}")
-            name = name + "(#{copies.length})"
-          end
-            # print "Skip, #{name} already exists\n"
-          # else
-            # uri_url = URI(url)
-            # if (uri_url.host == nil)
-            #   url = current_link + url
-            # end
-            # uri_url = URI(url)
+            print "Skip, #{name} already exists\n"
+          else
             request = Net::HTTP::Get.new(url)
             request.basic_auth(ENV['IC_USERNAME'], ENV['IC_PASSWORD'])
             http.request request do |response|
@@ -85,13 +68,12 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
                 puts "Wrong credentials"
               end
             end
-          # end
+          end
         end
       end
     end
   end
   threads.each(&:join)
-  # Dir.chdir(working_dir)
 end   # End of download_file_from_url
 
 def wikipedia_scrape(agent, list_url)
@@ -120,9 +102,16 @@ def spiral_scrape(agent, base_url)
   faculty_pages << medicine_faculty[0]
   faculty_pages << ns_faculty[0]
   faculty_pages << business_faculty[0]
+  threads = Array.new(4)
   faculty_pages.each do |faculty_page|
-
-    scrape_faculty(agent, faculty_page, base_url)
+    threads << Thread.new do
+      scrape_faculty(agent, faculty_page, base_url)
+    end
+  end
+  threads.each do |t|
+    if !t.nil?
+      t.join
+    end
   end
 end
 
@@ -155,14 +144,17 @@ def scrape_search_page(agent, alphabetical_search_page, base_url)
     paper_link = paper_page.parser.xpath('//a[contains(text(), "Download")]').map { |link| link['href'] }
     paper_links << paper_link[0]
   end
-  download_files_from_URLs(agent, Dir.pwd, paper_links, false, paper_names, 100, URI(base_url))
+  thread = Thread.new do
+    download_files_from_URLs(agent, Dir.pwd, paper_links, false, paper_names, 10, URI(base_url))
+  end
+  thread.join
 end
 
 def main
   agent = Mechanize.new
   working_dir = Dir.pwd
-  Dir.mkdir("PDF") unless File.exists?("PDF")
-  Dir.chdir("PDF")
+  Dir.mkdir("../PDF") unless File.exists?("../PDF")
+  Dir.chdir("../PDF")
   base_wikipedia_url = "https://en.wikipedia.org"
   base_spiral_repo_url = "https://spiral.imperial.ac.uk/"
   list_url = "#{base_wikipedia_url}/wiki/Marie_Curie";

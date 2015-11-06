@@ -1,7 +1,18 @@
 #!/usr/bin/env ruby
 
-files = Dir.glob("../raw/herox/*")
-
+files = Dir.glob("../PDF/*")
+queue = Queue.new
+files.map { |file| queue << file }
+thread_count = 10
+threads = thread_count.times.map do
+  Thread.new do
+    while !queue.empty?
+      elem = queue.pop
+      system("python extractor.py #{elem}")
+    end
+  end
+end
+threads.each(&:join)
 # files.each_slice(100) do |batch|
 #     threads = []
 #     batch.each do |elem|
@@ -12,9 +23,9 @@ files = Dir.glob("../raw/herox/*")
 #   end
 # end
 
-files.each do |elem|
-  system("python extractor.py #{elem}")
-end
+# files.each do |elem|
+
+# end
 
 # Theana for python
 # Torch / Lua
