@@ -1,0 +1,14 @@
+BUG:
+Traceback (most recent call last):
+  File "seek-env/extractor.py", line 18, in <module>
+    text = textract.process(src)
+  File "/home/mada/Hacking/seek/seek-env/lib/python3.4/site-packages/textract-1.4.0-py3.4.egg/textract/parsers/__init__.py", line 57, in process
+    return parser.process(filename, encoding, **kwargs)
+  File "/home/mada/Hacking/seek/seek-env/lib/python3.4/site-packages/textract-1.4.0-py3.4.egg/textract/parsers/utils.py", line 45, in process
+    unicode_string = self.decode(byte_string)
+  File "/home/mada/Hacking/seek/seek-env/lib/python3.4/site-packages/textract-1.4.0-py3.4.egg/textract/parsers/utils.py", line 54, in decode
+    if isinstance(text, unicode):
+NameError: name 'unicode' is not defined
+
+FIX:
+replace unicode by str above

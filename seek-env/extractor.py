@@ -5,8 +5,10 @@ import textract
 # Use script by calling $ python extractor.py <source> <destination>
 # By default destination folder is set to /deep-shit/Raw Text
 
-if len(sys.argv) == 1 : sys.exit(0)
-dst = os.getcwd()[:-len('seek-env')] + 'txt'
+if len(sys.argv) == 1 : 
+    print("extractor expects the following command \n extractor.py <src> \n extractor.py <src> <dest>")
+    sys.exit(0)
+dst = os.getcwd() + '/txt'
 if len(sys.argv) > 1 :
     src = sys.argv[1]
     if len(sys.argv) > 2 :
@@ -17,8 +19,7 @@ filename = os.path.basename(filepath)
 try:
     text = textract.process(src)
 except TypeError:
-    # do nothing
-print "Converting " + filename
+    next
 f = open(dst + '/' + filename + '.txt', 'w+')
-f.write(text)
+f.write(text.decode())
 f.close()
