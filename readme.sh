@@ -17,4 +17,6 @@ cd textract-1.4.0
 ed -s requirements/python <<< $',s/pdfminer==20140328/\nw' 
 pip install pdfminer3k
 python3 setup.py install
+cd ..
+ed -s lib/python3.4/site-packages/textract-1.4.0-py3.4.egg/textract/parsers/utils.py <<< $',s/(text, unicode)/(text, str)\nw'
 
