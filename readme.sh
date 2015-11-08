@@ -14,6 +14,7 @@
 ## -- python ------------------------------------------------------------------
 #sudo apt-get install python3
 #sudo apt-get install python-virtualenv
+#sudo apt-get install python3-pip
 
 # -- setup environment --------------------------------------------------------
 virtualenv -p /usr/bin/python3 seek-env
@@ -23,7 +24,7 @@ cd seek-env
 
 # -- installing textract for python 3 -----------------------------------------
 # installer script based on http://www.tysonmaly.com/installing-textract-for-python-3/ 
-apt-get install python3-dev libxml2 libxslt antiword unrtf poppler-utils pstotext tesseract-ocr flac lame libmad0 libsox-fmt-mp3 sox
+apt-get install python3-dev libxml2 libxslt antiword unrtf poppler-utils pstotext tesseract-ocr flac lame libmad0 libsox-fmt-mp3 sox libjpeg-dev zlib1g-dev
 pip3 install --upgrade lxml
 curl https://pypi.python.org/packages/source/t/textract/textract-1.4.0.tar.gz > textract-1.4.0
 tar xvf textract-1.4.0

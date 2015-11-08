@@ -2,3 +2,6 @@ txt/
 raw/
 PDF/
 seek-env/
+.*.swp
+.*.swo
+.DS_Store
