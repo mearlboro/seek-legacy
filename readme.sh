@@ -1,4 +1,4 @@
-﻿# installer script based on http://www.tysonmaly.com/installing-textract-for-python-3/ 
+﻿# installer script based on http://www.tysonmaly.com/installing-textract-for-python-3/
 
 ## -- required: curl ----------------------------------------------------------
 # sudo apt-get install curl
@@ -14,7 +14,7 @@ apt-get install python-dev libxml2 libxslt antiword unrtf poppler-utils pstotext
 curl https://pypi.python.org/packages/source/t/textract/textract-1.4.0.tar.gz > textract-1.4.0
 tar xvf textract-1.4.0
 cd textract-1.4.0
-ed -s requirements/python <<< $',s/pdfminer==20140328/\nw' 
+ed -s requirements/python <<< $',s/pdfminer==20140328/\nw'
 pip install pdfminer3k
+pip install -U gensim
 python3 setup.py install
-
