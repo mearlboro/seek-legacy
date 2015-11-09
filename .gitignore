@@ -1,4 +1,7 @@
 txt/
 raw/
 PDF/
-video.txt
+seek-env/
+.*.swp
+.*.swo
+.DS_Store
