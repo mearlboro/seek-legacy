@@ -118,13 +118,13 @@ def spiral_scrape(agent, base_url)
 end
 
 def scrape_faculty(agent, faculty_page, base_url)
-  if (agent.head(URI.parse(URI.encode(faculty_page))) != 404)
-    fp = agent.get(URI.parse(URI.encode(faculty_page)));
-    search_by_title_url = fp.parser.xpath('//a[contains(@href, "/browse?type=title")]').map { |link| link['href'] }
-    alphabetical_search_page = agent.get(faculty_page + search_by_title_url[0])
-    scrape_search_page(agent, alphabetical_search_page, base_url)
-    next_page = alphabetical_search_page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
-    while (next_page != nil)
+  fp = agent.get(URI.parse(URI.encode(faculty_page)));
+  search_by_title_url = fp.parser.xpath('//a[contains(@href, "/browse?type=title")]').map { |link| link['href'] }
+  alphabetical_search_page = agent.get(faculty_page + search_by_title_url[0])
+  scrape_search_page(agent, alphabetical_search_page, base_url)
+  next_page = alphabetical_search_page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
+  while (next_page != nil)
+    if (agent.head(next_page[0]['href']) != 404)
       page = agent.get(next_page[0]['href'])
       scrape_search_page(agent, page, base_url)
       next_page = page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
@@ -144,9 +144,11 @@ def scrape_search_page(agent, alphabetical_search_page, base_url)
   paper_urls.each do |p|
     paper_url = base_url + p
     agent.add_auth(paper_url, ENV['IC_USERNAME'], ENV['IC_PASSWORD'])
-    paper_page = agent.get(paper_url)
-    paper_link = paper_page.parser.xpath('//a[contains(text(), "Download")]').map { |link| link['href'] }
-    paper_links << paper_link[0]
+    if (agent.head(paper_url) != 404)
+      paper_page = agent.get(paper_url)
+      paper_link = paper_page.parser.xpath('//a[contains(text(), "Download")]').map { |link| link['href'] }
+      paper_links << paper_link[0]
+    end
   end
   thread = Thread.new do
     download_files_from_URLs(agent, Dir.pwd, paper_links, false, paper_names, URI(base_url))
