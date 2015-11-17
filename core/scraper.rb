@@ -116,15 +116,17 @@ def spiral_scrape(agent, base_url)
 end
 
 def scrape_faculty(agent, faculty_page, base_url)
-  fp = agent.get(URI.parse(URI.encode(faculty_page)));
-  search_by_title_url = fp.parser.xpath('//a[contains(@href, "/browse?type=title")]').map { |link| link['href'] }
-  alphabetical_search_page = agent.get(faculty_page + search_by_title_url[0])
-  scrape_search_page(agent, alphabetical_search_page, base_url)
-  next_page = alphabetical_search_page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
-  while (next_page != nil)
-    page = agent.get(next_page[0]['href'])
-    scrape_search_page(agent, page, base_url)
-    next_page = page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
+  if (agent.head(URI.parse(URI.encode(faculty_page))) == 200)
+    fp = agent.get(URI.parse(URI.encode(faculty_page)));
+    search_by_title_url = fp.parser.xpath('//a[contains(@href, "/browse?type=title")]').map { |link| link['href'] }
+    alphabetical_search_page = agent.get(faculty_page + search_by_title_url[0])
+    scrape_search_page(agent, alphabetical_search_page, base_url)
+    next_page = alphabetical_search_page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
+    while (next_page != nil)
+      page = agent.get(next_page[0]['href'])
+      scrape_search_page(agent, page, base_url)
+      next_page = page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
+    end
   end
 end
 

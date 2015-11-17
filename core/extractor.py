@@ -8,7 +8,7 @@ import textract
 if len(sys.argv) == 1 :
     print("extractor expects the following command \n extractor.py <src> \n extractor.py <src> <dest>")
     sys.exit(0)
-dst = os.getcwd() + '/txt'
+dst = os.getcwd()
 if len(sys.argv) > 1 :
     src = sys.argv[1]
     if len(sys.argv) > 2 :
