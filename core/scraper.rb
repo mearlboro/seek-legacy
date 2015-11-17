@@ -144,10 +144,12 @@ def scrape_search_page(agent, alphabetical_search_page, base_url)
   paper_urls.each do |p|
     paper_url = base_url + p
     agent.add_auth(paper_url, ENV['IC_USERNAME'], ENV['IC_PASSWORD'])
-    if (agent.head(paper_url) != 404)
+    begin
       paper_page = agent.get(paper_url)
       paper_link = paper_page.parser.xpath('//a[contains(text(), "Download")]').map { |link| link['href'] }
       paper_links << paper_link[0]
+    rescue Exception => e
+      puts(e.message)
     end
   end
   thread = Thread.new do
