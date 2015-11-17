@@ -1,10 +1,10 @@
 #!/usr/bin/env ruby
-begin
-  gem 'mechanize', ">=2.7"
-rescue Gem::LoadError => e
-  system("sudo gem install mechanize")
-  Gem.clear_paths
-end
+#begin
+#  gem 'mechanize', ">=2.7"
+#rescue Gem::LoadError => e
+#  system("sudo gem install mechanize")
+#  Gem.clear_paths
+#end
 
 require 'open-uri'
 require 'mechanize'
@@ -12,7 +12,9 @@ require 'nokogiri'
 require 'net/http'
 require 'io/console'
 
-def download_files_from_URLs(agent, target_dir, links, override, file_in_names, thread_count, current_link)
+$thread_count = 5
+
+def download_files_from_URLs(agent, target_dir, links, override, file_in_names, current_link)
   # Open file from web URL, using username and password provided
   include FormatMethods
 
@@ -24,7 +26,7 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
   links.map { |url| queue << url }
   file_in_names.map { |name| name_queue << name }
 
-  threads = thread_count.times.map do
+  threads = $thread_count.times.map do
     Thread.new do
       Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == 'https') do |http|
         while !queue.empty?
@@ -145,7 +147,7 @@ def scrape_search_page(agent, alphabetical_search_page, base_url)
     paper_links << paper_link[0]
   end
   thread = Thread.new do
-    download_files_from_URLs(agent, Dir.pwd, paper_links, false, paper_names, 10, URI(base_url))
+    download_files_from_URLs(agent, Dir.pwd, paper_links, false, paper_names, URI(base_url))
   end
   thread.join
 end
