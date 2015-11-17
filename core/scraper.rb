@@ -116,7 +116,7 @@ def spiral_scrape(agent, base_url)
 end
 
 def scrape_faculty(agent, faculty_page, base_url)
-  if (agent.head(URI.parse(URI.encode(faculty_page))) == 200)
+  if (agent.head(URI.parse(URI.encode(faculty_page))) != 404)
     fp = agent.get(URI.parse(URI.encode(faculty_page)));
     search_by_title_url = fp.parser.xpath('//a[contains(@href, "/browse?type=title")]').map { |link| link['href'] }
     alphabetical_search_page = agent.get(faculty_page + search_by_title_url[0])
