@@ -1,14 +1,15 @@
 #!/usr/bin/env ruby
 
-files = Dir.glob("../raw/herox/*")
+files = Dir.glob("../PDF/*")
 queue = Queue.new
 files.map { |file| queue << file }
-thread_count = 10
+dst = Dir.pwd + '/txt'
+thread_count = 5
 threads = thread_count.times.map do
   Thread.new do
     while !queue.empty?
       elem = queue.pop
-      system("python extractor.py #{elem} ../txt")
+      system("python extractor.py #{elem} #{dst}")
     end
   end
 end

@@ -16,11 +16,16 @@ if len(sys.argv) > 1 :
 
 filepath, file_ext = os.path.splitext(src)
 filename = os.path.basename(filepath)
-print("Converting " + filename)
-try:
-    text = textract.process(src)
-except TypeError:
-    next
-f = open(dst + '/' + filename + '.txt', 'w+')
-f.write(text.decode())
-f.close()
+if os.path.isfile(dst + '/' + filename + '.txt'):
+    print("File " + filename + " already exists")
+else:
+    print("Converting " + filename)
+    try:
+        text = textract.process(src)
+    except TypeError:
+        next
+    f = open(dst + '/' + filename + '.txt', 'w+')
+
+    f.write(text.decode())
+
+    f.close()
