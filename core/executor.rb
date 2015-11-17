@@ -1,9 +1,14 @@
 #!/usr/bin/env ruby
 
-files = Dir.glob("../PDF/*")
+# Parse arguments at input level, make difference between file and directory
+files = sys.argv[1]
+dst = Dir.pwd + '/txt'
+
+if File.file?(files)
+	system("python extractor.py #{files} #{dst}")
+end
 queue = Queue.new
 files.map { |file| queue << file }
-dst = Dir.pwd + '/txt'
 thread_count = 5
 threads = thread_count.times.map do
   Thread.new do
