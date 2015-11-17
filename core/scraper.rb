@@ -158,6 +158,7 @@ end
 
 def main
   agent = Mechanize.new
+  agent.max_history=(nil)
   working_dir = Dir.pwd
   Dir.mkdir("../PDF") unless File.exists?("../PDF")
   Dir.chdir("../PDF")
