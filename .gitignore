@@ -1,6 +1,6 @@
 txt/
 raw/
-PDF/
+tests/testExtractedData
 seek-env/
 .*.swp
 .*.swo
