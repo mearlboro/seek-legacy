@@ -136,8 +136,8 @@ def scrape_search_page(agent, alphabetical_search_page, base_url)
   paper_tags = alphabetical_search_page.parser.xpath('//tr//td//a')
 
   paper_urls = paper_tags.map { |link| link['href'] }
-  # paper_names = paper_tags.map { |link| link.text.strip }
-  paper_names = Array.new(paper_urls.length).fill("")
+  paper_names = paper_tags.map { |link| link.text.strip }
+  # paper_names = Array.new(paper_urls.length).fill("")
 
   paper_links = Array.new
 
