@@ -10,8 +10,8 @@ Topic modelling(WIP) tool. Target userbase: The whole world
 ## Phase 1
 - [x] PDF to plain text
 - [ ] Handwritten ßtuff to plain text
-- [ ] Text from images
-- [ ] Web scraping - Wikipedia(big no no), Arxiv(sensitive bastards), Imperial's Spiral repository(say what?)
+- [X] Text from images
+- [X] Web scraping - Wikipedia(big no no), Arxiv(sensitive bastards), Imperial's Spiral repository(say what?)
 - [ ] Parsing plain text to LDA rules
 
 ***
