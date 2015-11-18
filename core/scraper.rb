@@ -123,7 +123,7 @@ def scrape_faculty(agent, faculty_page, base_url)
   alphabetical_search_page = agent.get(faculty_page + search_by_title_url[0])
   scrape_search_page(agent, alphabetical_search_page, base_url)
   next_page = alphabetical_search_page.parser.xpath('//a[contains(text(), "next")]')#.map { |link| link['href'] }
-  while (next_page != nil)
+  while (next_page != nil and next_page[0] != nil)
     if (agent.head(next_page[0]['href']) != 404)
       page = agent.get(next_page[0]['href'])
       scrape_search_page(agent, page, base_url)
@@ -162,8 +162,7 @@ def main
   agent = Mechanize.new
   agent.max_history=(nil)
   working_dir = Dir.pwd
-  Dir.mkdir("../PDF") unless File.exists?("../PDF")
-  Dir.chdir("../PDF")
+  Dir.chdir("../raw/pdf/spiral/")
   base_wikipedia_url = "https://en.wikipedia.org"
   base_spiral_repo_url = "https://spiral.imperial.ac.uk/"
   list_url = "#{base_wikipedia_url}/wiki/Marie_Curie";
