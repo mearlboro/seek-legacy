@@ -47,7 +47,9 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
             next
           end
           name = name.gsub(/[\/ ]/, "").gsub(/[%20]/, "_") + ".pdf"
-
+          if (name.size > 100)
+            name = name[0..100]
+          end
           if (File.exists?(name))
             print "Skip, #{name} already exists\n"
           else
