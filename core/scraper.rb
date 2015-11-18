@@ -46,7 +46,7 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
           if (File.extname(name) == ".ps")
             next
           end
-          name = name.gsub(/[\% ]/, "")
+          name = name.gsub(/[\/ ]/, "").gsub(/[%20]/, "_") + ".pdf"
 
           if (File.exists?(name))
             print "Skip, #{name} already exists\n"
