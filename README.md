@@ -17,7 +17,7 @@ Topic modelling(WIP) tool. Target userbase: The whole world
 ***
 
 ## Phase 2
-- [ ] Gatherer - script that runs the integration algorithms and parses the plain text
+- [X] Gatherer - script that runs the integration algorithms and parses the plain text
 - [ ] Analyser - takes plain text ^ connects to database
 - [ ] Assistant - Interface for document/query input, RL (terminal only)
 
