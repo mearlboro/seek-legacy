@@ -26,7 +26,7 @@ class Executor_test < Test::Unit::TestCase
         Dir.chdir $executor_directory
         src_directory = File.join('..', 'tests', 'testRawData', 'testSingleFolder/')
         before, after, total  = extract_files_and_return_count(src_directory)
-       
+
         assert(before < after, 'Files were not generated')
         assert(total == after, 'not enough files were generated')
 
@@ -35,14 +35,14 @@ class Executor_test < Test::Unit::TestCase
 
     def test_does_extract_files_on_subfolders
         Dir.chdir $executor_directory
-        src_directory = File.join('..', 'tests', 'testRawData', 'testSubFolders/') 
+        src_directory = File.join('..', 'tests', 'testRawData', 'testSubFolders/')
         before, after, total  = extract_files_and_return_count(src_directory)
 
         puts "before: #{before} after: #{after}"
         assert(before < after, 'Files were not generated')
         assert(total == after, 'not enough files were generated')
 
-        clean_directory 
+        clean_directory
     end
 
     # Runs the executor and returns the values to further check wether the
@@ -50,7 +50,7 @@ class Executor_test < Test::Unit::TestCase
     def extract_files_and_return_count(src_directory)
         Dir.chdir $executor_directory
 
-        
+
         number_files_before = TestUtils.count_files_directory($dst_directory)
         number_files_src_directory = TestUtils.count_files_directory(src_directory)
 
