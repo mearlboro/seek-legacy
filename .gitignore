@@ -1,4 +1,4 @@
-/raw/text/*.txt
+/text/*.txt
 /raw/pdf/spiral/*
 tests/testExtractedData
 seek-env/
