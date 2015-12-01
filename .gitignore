@@ -1,7 +1,8 @@
-txt/
-raw/
+/raw/text/*.txt
+/raw/pdf/*
 tests/testExtractedData
 seek-env/
 .*.swp
 .*.swo
-.DS_Store
+.DS_Storei
+Herox
