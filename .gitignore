@@ -1,5 +1,5 @@
 /raw/text/*.txt
-/raw/pdf/*
+/raw/pdf/spiral/*
 tests/testExtractedData
 seek-env/
 .*.swp
