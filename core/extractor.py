@@ -3,7 +3,6 @@ import sys
 import textract
 
 # Use script by calling $ python extractor.py <source> <destination>
-# By default destination folder is set to /deep-shit/Raw Text
 
 if len(sys.argv) == 1 :
     print("extractor expects the following command \n extractor.py <src> \n extractor.py <src> <dest>")
@@ -17,9 +16,9 @@ if len(sys.argv) > 1 :
 filepath, file_ext = os.path.splitext(src)
 filename = os.path.basename(filepath)
 if os.path.isfile(dst + '/' + filename + '.txt'):
-    print("File " + filename + " already exists")
+    print("(extractor) File " + filename + " already exists")
 else:
-    print("Converting " + filename)
+    print("(extractor) Converting " + filename)
     try:
         text = textract.process(src)
     except TypeError:
