@@ -82,16 +82,23 @@ commands = {
 }
 
 # -----------------------------------------------------------------------------
-if len(sys.argv) <= 3:
-    print("Seek expects the following command \n seek <command> [<flags>] <src> <dest>")
-    sys.exit(0)
-if len(sys.argv) > 3:
-    com  = sys.argv[1]
-    src  = sys.argv[2]
-    dest = sys.argv[3]
-    if commands.get(com, False):
-        commands[com]([src, dest, True])
-    else:
-        print("<command> can be \n upload \n extract \n analyse \n learn")
-        sys.exit(0)
+
+# deal with arguments
+
+parser = argparse.ArgumentParser(description='Seek command line interface.', prog='Seek')
+parser.add_argument('command', choices=['upload', 'extract', 'analyse', 'learn'], help='<command> to run')
+parser.add_argument('-l', '--local', help='run Seek <command> locally on files found at <src> returning results in directory <dst>.', nargs=2, metavar=('src', 'dst'))
+parser.add_argument('-s', '--server', help='run Seek <command> on the server on files found at <src>, returning results in the console. Disclaimer: Seek will learn all data given with this option. Proceed with caution.', nargs=1, metavar=('src'))
+
+args=parser.parse_args()
+print(args)
+
+com = args.command
+local = args.local
+if local:
+    comargs = [args.local[0], args.local[1], True]
+elif server:
+    comargs = [args.server[0], False]
+
+commands[com](comargs)
 
