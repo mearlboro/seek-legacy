@@ -70,6 +70,18 @@ class Extractor_test < Test::Unit::TestCase
         assert_equal number_files_before, number_of_files_after
     end
 
+    def test_can_extract_docx_files
+        test_file         = 'example_docx'
+        src_directory     = File.join('testRawData', 'docx/')
+        dst_directory     = File.join('testExtractedData', 'docx/')
+
+        system("#{$extractor_command} #{src_directory}#{test_file}.docx #{dst_directory}")
+        correct_output_file = File.join('testCorrectOutputData', 'example_docx.txt')
+        comparison = FileUtils.compare_file("#{dst_directory}#{test_file}.txt",correct_output_file)
+
+	assert_equal comparison, true
+    end
+
 end
 
 # Deletes all extracted files before running tests
