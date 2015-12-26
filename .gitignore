@@ -1,8 +1,13 @@
-/text/*.txt
-/raw/pdf/spiral/*
-tests/testExtractedData
-seek-env/
+# work directories containing files -- no need to store on git
+/Herox
+/Herox ßtuff
+/text/*
+/raw/*
+
+# seek environment should be recreated at every pull
+/seek-env/
+
+# temp files
 .*.swp
 .*.swo
-.DS_Storei
-Herox
+.DS_Store
