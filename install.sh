@@ -53,9 +53,11 @@ if [[ $platform == 'linux' ]]; then
   pip3 install -U nltk
   pip3 install -U numpy
   python -m nltk.downloader all
+
 elif [[ $platform == 'osx' ]]; then
 
   brew install python3
+  pip3 install virtualenv
 
   # -- setup environment --------------------------------------------------------
   virtualenv -p /usr/local/bin/python3 seek-env
@@ -63,7 +65,9 @@ elif [[ $platform == 'osx' ]]; then
   /bin/bash -c ". seek-env/bin/activate; exec /bin/bash -i"
   cd seek-env
 
-  brew install libxml2 antiword unrtf poppler tesseract flac lame libmad libsoxr libjpeg zlib
+  # -- setup textract -----------------------------------------------------------
+  brew install libxml2 antiword unrtf poppler tesseract flac lame libmad libsoxr libjpeg
+  brew install homebrew/dupes/zlib
   pip3 install --upgrade lxml
 
   curl https://pypi.python.org/packages/source/t/textract/textract-1.4.0.tar.gz > textract-1.4.0.tar.gz
@@ -74,8 +78,14 @@ elif [[ $platform == 'osx' ]]; then
   python3 setup.py install
   cd ..
   ed -s lib/python3.5/site-packages/textract-1.4.0-py3.5.egg/textract/parsers/utils.py <<< $',s/(text, unicode)/(text, str)\nw'
+
+  # -- Gensim & nltk ------------------------------------------------------------
   pip3 install -U gensim
   pip3 install -U nltk
   pip3 install -U numpy
   python3 -m nltk.downloader all
+
+  # -- Mongo --------------------------------------------------------------------
+  brew install mongodb
+
 fi
