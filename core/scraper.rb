@@ -12,7 +12,7 @@ require 'nokogiri'
 require 'net/http'
 require 'io/console'
 require 'optparse'
-require './spiral'
+require './scrapy'
 
 # Defines the number of threads to run Scrapy on
 $thread_count = 5
@@ -126,7 +126,7 @@ def parse(agent, args)
 end #End parse
 
 def main
-  include Spiral
+  include Scrapy
   ARGV << "-h" if ARGV.empty?
   agent = Mechanize.new
   agent.max_history=(nil)

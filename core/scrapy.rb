@@ -1,4 +1,4 @@
-module Spiral
+module Scrapy
   def paragraph_scrape(agent, list_url)
     # Gets page html
     page = agent.get(list_url)
