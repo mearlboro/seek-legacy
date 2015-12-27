@@ -22,6 +22,9 @@ document = users_col.find_one({"name":"emilio"}) # find_one() can be used on any
 	     			                 # will find the first one according to internal ordering
 				                 # orderings can be defined by calling .ensure_index(KEY: {-1, 1})
 				                 # where KEY is an attribute (i.e name). 1 for ascending, -1 for descending
+				                 
+    # documents in pymongo are just dictionaries
+    print (document["name"])
 
 # inserting (bulk) more than one element
 
@@ -35,7 +38,7 @@ result.inserted_id                              # Yields an array [ObjectId, Obj
 # querying multiple elements
 
    # Can restrict the search by passing parameters (i.e users.find({"likes":{$gt:100}}) )
-for user in users_col.find().sort("likes".sort("likes")
+for user in users_col.find()
   # user...
 
 # removing elements 

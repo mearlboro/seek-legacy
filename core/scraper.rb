@@ -12,7 +12,7 @@ require 'nokogiri'
 require 'net/http'
 require 'io/console'
 require 'optparse'
-require './spiral'
+require './scrapy'
 
 # Defines the number of threads to run Scrapy on
 $thread_count = 5
@@ -90,6 +90,43 @@ def download_files_from_URLs(agent, target_dir, links, override, file_in_names, 
   threads.each(&:join)
 end   # End of download_file_from_url
 
+def extract_file_from_url(url, dest)
+  request = Net::HTTP::Get.new(url)
+  begin
+    name = url.meta['content-disposition'].match(/filename=(\"?)(.+)\1/)[2]
+  rescue Exception => e
+    name = File.basename(URI.parse(url.to_s).path)
+  end
+  name = name.gsub(/[\/ ]/, "").gsub(/[%20]/, "_")
+  if (name.size > 100)
+    name = name[0..100]
+  end
+  uri = URI(url)
+  Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == 'https') do |http|
+    http.request request do |response|
+      case response
+      when Net::HTTPRedirection
+        # Do Nothing for now
+        # TODO: Fix download of secure files
+      when Net::HTTPOK
+          # Write chunks of file while also reading new chunks, to increase
+          # efficiency
+          File.open(name, 'w') do |file_out|
+            response.read_body do |chunk|
+              file_out << chunk
+            end
+          end
+          print name
+          exit
+      when Net::HTTPNotFound
+        # Do nothing
+      when Net::HTTPNetworkAuthenticationRequired
+        puts "Wrong credentials"
+      end
+    end
+  end
+end
+
 def parse(agent, args)
   $opts = []
   opt_parser = OptionParser.new do |opts|
@@ -111,22 +148,28 @@ def parse(agent, args)
       spiral_scrape(agent, base_spiral_repo_url)
 
     end
-    opts.on("-p url", "--paragraph url", "Get text from webpage paragraphs") do |p|
-      $opts <<- "-p"
-      src = ARGV.pop
+    opts.on("-p", "--paragraph", "Get text from webpage paragraphs") do |p|
+      $opts << "-p"
+      src = args[0]
       paragraph_scrape(agent, src)
+    end
+    opts.on("-d", "--document", "Download file from URL") do |p|
+      $opts << "-d"
+      src = args[0]
+      dest = args[1]
+      extract_file_from_url(src, dest)
     end
     opts.on_tail("-h", "--help", "Show this message") do
       $opts << "-h"
       puts opts
-      exit
+      exit 0
     end
   end
   opt_parser.parse!(args)
 end #End parse
 
 def main
-  include Spiral
+  include Scrapy
   ARGV << "-h" if ARGV.empty?
   agent = Mechanize.new
   agent.max_history=(nil)
@@ -137,7 +180,6 @@ def main
   parse(agent, ARGV)
 
   Dir.chdir(working_dir)
-
 end
 
 main
