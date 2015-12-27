@@ -4,7 +4,9 @@ import glob
 import argparse
 import urllib.request
 import concurrent.futures
+import subprocess
 from subprocess import call
+from os.path import basename
 from bs4 import BeautifulSoup
 
 def transfer_file(filename):
@@ -23,15 +25,13 @@ def upload(args):   # args[0]: <src>
         transfer_file(src)
     else:  # might be an URL
         try:
-            # TODO(dd2713): add a call to the updated scraper
-            # with urllib.request.urlopen(args[0]) as response: # if it is a url, grab the html
-            #     html = response.read()
-            #     content = BeautifulSoup(html, "lxml")
-            #     print(content);
-            #     title = content.find('title').text
-            #     f = open('/raw/html/' + title + '.html', 'w+')
-            #     f.write(html)
-            #     f.close()
+            # Not uploading yet as we don't know the file name
+            cmd = "ruby scraper.rb -p %s" % src
+            p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            output, errors = p.communicate()
+            filename = output.decode().replace(" ", "_") + ".txt"
+            transfer_file(filename)
+            # os.system('ruby scraper.rb -p %s' % src)
         except IOError:
             print("(seek) Cannot parse this address or URL.")
 
@@ -52,14 +52,21 @@ def extract(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
                 print("(seek) Call to extractor terminated by signal: " + -retcode)
 
         # if its a directory, grab all files and extract concurrently
-        else:
+        elif os.path.isdir(src):
             files = glob.glob(os.path.join(src, '*.txt'))
             for filename in files:
                 threads = len(files)
                 with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
                     print("(seek) Extracting from directory, file" + filename)
                     executor.submit(lambda x,y:call("python extractor.py "+x+" "+y, shell=True), filename, dest)
-        # TODO: if it is an URL to a file?
+        else:
+            cmd = "ruby scraper.rb -d %s" % src
+            p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            output, errors = p.communicate()
+            filename = output.decode().replace(" ", "_")
+            dest = os.path.splitext(filename)[0] + ".txt"
+            os.system('python extractor.py %s' % filename)
+            transfer_file(dest)
     else:
         print("TODO: upload these files to the txt/ folder on the server and flag it that it needs to be analysed");
 
