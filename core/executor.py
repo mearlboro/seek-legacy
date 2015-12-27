@@ -7,49 +7,52 @@ import concurrent.futures
 from subprocess import call
 from bs4 import BeautifulSoup
 
+def transfer_file(filename):
+    os.system('scp %s $IC_USERNAME@shell1.doc.ic.ac.uk:~' % filename)
+    os.system("ssh -n $IC_USERNAME@shell1.doc.ic.ac.uk 'scp %s $IC_USERNAME@cloud-vm-45-110.doc.ic.ac.uk:/develop/Seek/raw/txt && rm %s' " % (filename, filename))
 
 # -----------------------------------------------------------------------------
 # SEEK UPLOAD <SRC>
 def upload(args):   # args[0]: <src>
     src = args[0]
-    
+
     if os.path.isdir(src):
         for filename in glob.glob(os.path.join(args[0], '*.*')):
-            print("TODO: upload this file to the raw/ folder on the server and flag it that it needs to be extracted");
+            transfer_file(filename)
     elif os.path.isfile(src):
-        print("TODO: upload this file to the raw/ folder on the server and flag it that it needs to be extracted");
+        transfer_file(src)
     else:  # might be an URL
         try:
             # TODO(dd2713): add a call to the updated scraper
-            with urllib.request.urlopen(args[0]) as response: # if it is a url, grab the html
-                html = response.read()
-                content = BeautifulSoup(html, "lxml")
-                print(content);
-                title = content.find('title').text
-                f = open('/raw/html/' + title + '.html', 'w+')
-                f.write(html)
-                f.close()
+            # with urllib.request.urlopen(args[0]) as response: # if it is a url, grab the html
+            #     html = response.read()
+            #     content = BeautifulSoup(html, "lxml")
+            #     print(content);
+            #     title = content.find('title').text
+            #     f = open('/raw/html/' + title + '.html', 'w+')
+            #     f.write(html)
+            #     f.close()
         except IOError:
             print("(seek) Cannot parse this address or URL.")
 
 
 # -----------------------------------------------------------------------------
-# SEEK EXTRACT [--local] <SCR> <DEST> 
+# SEEK EXTRACT [--local] <SCR> <DEST>
 def extract(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
     src = args[0]
     dest = args[1]
     loc = args[2]
 
-    if loc: 
+    if loc:
         # if it's a file, just run extractor
-        if os.path.isfile(src): 
+        if os.path.isfile(src):
             print("(seek) Extracting file: " + src)
             retcode = call("python extractor.py " + src + " " +  dest, shell=True)
             if retcode < 0:
                 print("(seek) Call to extractor terminated by signal: " + -retcode)
 
-        # if its a directory, grab all files and extract concurrently        
-        else: 
+        # if its a directory, grab all files and extract concurrently
+        else:
             files = glob.glob(os.path.join(src, '*.txt'))
             for filename in files:
                 threads = len(files)
@@ -91,14 +94,12 @@ parser.add_argument('-l', '--local', help='run Seek <command> locally on files f
 parser.add_argument('-s', '--server', help='run Seek <command> on the server on files found at <src>, returning results in the console. Disclaimer: Seek will learn all data given with this option. Proceed with caution.', nargs=1, metavar=('src'))
 
 args=parser.parse_args()
-print(args)
-
 com = args.command
 local = args.local
+server = args.server
 if local:
     comargs = [args.local[0], args.local[1], True]
 elif server:
     comargs = [args.server[0], False]
 
 commands[com](comargs)
-
