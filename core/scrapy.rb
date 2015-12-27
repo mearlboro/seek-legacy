@@ -3,7 +3,7 @@ module Scrapy
     # Gets page html
     page = agent.get(list_url)
     # Gets title
-    title = page.parser.xpath('//h1').text
+    title = page.parser.xpath('//h1').text.gsub(/[ ]/, "_")
     content = ""
     content.concat(title)
     content.concat("\n")
@@ -15,6 +15,9 @@ module Scrapy
     File.open(title + ".txt", 'w') do |f|
       f << content
     end
+    print title
+    exit
+    # return title
   end
 
   def spiral_scrape(agent, base_url)
