@@ -1,9 +1,11 @@
 import numpy
+import scipy
 import nltk
 import textract
 import os
 import glob
 import sys
+from gensim import corpora, models, similarities
 
 # Use script by calling $ python linguist.py <command> <source>
 
@@ -26,7 +28,9 @@ def getvocab(src):
         global vocab
         vocab = sorted(set(vocab + sorted(set([w.lower() for w in text]))))
                                  # get vocabulary and add to total vocabulary
-    print(vocab)
+
+    #print vocab
+    return vocab
 
 
 # COMMAND freq
@@ -37,7 +41,8 @@ def getfrequency(src):
         global freqs
         freqs = freqs + freq     # find frequencies and add to total frequency distribution
 
-    print(freqs)
+    #print freqs
+    return freqs
 
 
 # COMMAND ldatokens
@@ -85,25 +90,26 @@ def getldatokens(src):
         global freqs
         freqs = freqs + freq    # find frequencies and add to total frequency distribution
 
-    print(vocab)
-    print(freqs)
+    #print vocab
+    #print freqs
+    return vocab, freqs
 
-################################################################################
-# freqs is basically the TFIDF vector, which is what we need.
-# Latent Semantic Analysis (online) - if the nature of the input stream changes in time,
-# LSA re-orients itself in order to reflect these changes in a reasonably small number of updates.
-# Latent Dirichlet Allocation (offline) - the impact of later updates on the model gradually diminishes.
-# LDA - good for batch usage, the entire training corpus known beforehand.
 
-# Give pathname and number of topics to extract.
-def extracttopics(src, num):
-    # vocab, freqs = getldatokens(src)
-    # lsi = gensim.models.lsimodel.LsiModel(corpus=vocab, id2word=freqs, num_topics=num)
-    # lda = gensim.models.ldamodel.LdaModel(corpus=vocab, id2word=freqs, num_topics=num, update_every=1, chunksize=500, passes=1)
-    # print(lsi)
-    # print(lda)
+# Initial batch training.
+def extracttopicsbatch(src, num):
+    vocab, freqs = getldatokens(src)
+    lda = gensim.models.ldamodel.LdaModel(corpus=vocab, id2word=freqs, num_topics=num, update_every=1, chunksize=500, passes=1)
 
-################################################################################
+    lda.print_topics(num)
+
+
+# Updates.
+def extracttopicsupdate(src, num):
+    vocab, freqs = getldatokens(src)
+    lsi = gensim.models.lsimodel.LsiModel(corpus=vocab, id2word=freqs, num_topics=num)
+
+    lsi.print_topics(num)
+
 
 commands = {
     'vocab': getvocab,
