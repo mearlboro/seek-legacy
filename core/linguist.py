@@ -1,6 +1,5 @@
 import numpy
 import nltk
-import textract
 import os
 import glob
 import sys
@@ -12,7 +11,7 @@ freqs = nltk.FreqDist('')
 
 # gets tokens and text in nltk text type
 def gettext(src, filename):
-    f = open(src + '/' + filename, 'r+')
+    f = open(filename, 'r+')
     raw_text = f.read()
     toks  = nltk.word_tokenize(raw_text)    # tokenize raw text
     text  = nltk.Text(toks)                 # nltk type text
@@ -22,18 +21,19 @@ def gettext(src, filename):
 # COMMAND vocab
 def getvocab(src):
     for filename in glob.glob(os.path.join(src, '*.txt')):
+        print(filename)
         text  = gettext(src, filename)
         global vocab
         vocab = sorted(set(vocab + sorted(set([w.lower() for w in text])))) 
-                                 # get vocabulary and add to total vocabulary 
-    print(vocab)
- 
+                                 # get vocabulary and add to total vocabulary
+    print(vocab) 
+
 
 # COMMAND freq
 def getfrequency(src):
     for filename in glob.glob(os.path.join(src, '*.txt')):
         text  = gettext(src, filename)
-        freq  = nltk.FreqDist(text)
+        freq  = nltk.FreqDist([w.lower() for w in text])
         global freqs 
         freqs = freqs + freq     # find frequencies and add to total frequency distribution
 
@@ -101,6 +101,7 @@ if len(sys.argv) <= 2:
 if len(sys.argv) > 2:
     com = sys.argv[1]
     src = sys.argv[2]
+    print("Executing linguist " + com + " on directory " + src + " ...")
     if commands.get(com, False):
         commands[com](src)
     else:
