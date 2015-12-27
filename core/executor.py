@@ -64,9 +64,9 @@ def extract(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             output, errors = p.communicate()
             filename = output.decode().replace(" ", "_")
-            dest = os.path.splitext(filename)[0] + ".txt"
-            os.system('python extractor.py %s' % filename)
-            transfer_file(dest)
+            converted_file = os.path.splitext(filename)[0] + ".txt"
+            os.system('python extractor.py %s %s' % (filename, dest))
+            transfer_file(converted_file)
     else:
         print("TODO: upload these files to the txt/ folder on the server and flag it that it needs to be analysed");
 
