@@ -14,7 +14,7 @@ freqs = nltk.FreqDist('')
 
 # gets tokens and text in nltk text type
 def gettext(src, filename):
-    f = open(src + '/' + filename, 'r+')
+    f = open(filename, 'r+')
     raw_text = f.read()
     toks  = nltk.word_tokenize(raw_text)    # tokenize raw text
     text  = nltk.Text(toks)                 # nltk type text
@@ -96,25 +96,29 @@ def getldatokens(src):
 
 
 # Initial batch training.
-def extracttopicsbatch(src, num):
+def extracttopicsbatch(src):
     vocab, freqs = getldatokens(src)
-    lda = gensim.models.ldamodel.LdaModel(corpus=vocab, id2word=freqs, num_topics=num, update_every=1, chunksize=500, passes=1)
+    lda = gensim.models.ldamodel.LdaModel(corpus=vocab, id2word=freqs, num_topics=100, update_every=1, chunksize=500, passes=1)
 
-    lda.print_topics(num)
+    print(lda.print_topics(10))
+# -- alternative printing
+#    for i in range(0, lda.num_topics-1):
+#        print(lda.print_topic(i))
 
 
 # Updates.
-def extracttopicsupdate(src, num):
+def extracttopicsupdate(src):
     vocab, freqs = getldatokens(src)
-    lsi = gensim.models.lsimodel.LsiModel(corpus=vocab, id2word=freqs, num_topics=num)
+    lsi = gensim.models.lsimodel.LsiModel(corpus=vocab, id2word=freqs, num_topics=100)
 
-    lsi.print_topics(num)
+    print(lsi.print_topics(10))
 
 
 commands = {
     'vocab': getvocab,
     'freq': getfrequency,
     'ldatokens': getldatokens,
+    'topics': extracttopicsbatch,
 }
 
 if len(sys.argv) <= 2:
