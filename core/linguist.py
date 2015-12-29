@@ -29,14 +29,14 @@ def getvocab(src):
         vocab = sorted(set(vocab + sorted(set([w.lower() for w in text]))))
                                  # get vocabulary and add to total vocabulary
 
-    #print vocab
+    print(vocab)
     return vocab
 
 
 # COMMAND freq
 def getfrequency(src):
     for filename in glob.glob(os.path.join(src, '*.txt')):
-        text  = gettext(src, filename)
+        text  = gettext(filename)
         freq  = nltk.FreqDist(text)
         global freqs
         freqs = freqs + freq     # find frequencies and add to total frequency distribution
