@@ -3,9 +3,13 @@ import nltk
 import os
 import glob
 import sys
+from nltk import tokenize
+from nltk.corpus import treebank
+
 
 # Use script by calling $ python linguist.py <command> <source>
 
+# -- globals and helpers ----------------------------------------------------
 vocab = []
 freqs = nltk.FreqDist('') 
 
@@ -17,11 +21,22 @@ def gettext(src, filename):
     text  = nltk.Text(toks)                 # nltk type text
     return text 
 
+# gets all sentences in the text as list of tokens and text in nltk text type
+def getsents(src, filename):
+    f = open(filename, 'r+')
+    raw_text = f.read()
+    sents = nltk.sent_tokenize(raw_text)    # tokenize raw text
+    sents_toks = list(map(nltk.word_tokenize, sents))  
+    text = list(map(nltk.Text, sents_toks))
+    return text 
+
+
+
+# -- linguist's commands ----------------------------------------------------
 
 # COMMAND vocab
 def getvocab(src):
     for filename in glob.glob(os.path.join(src, '*.txt')):
-        print(filename)
         text  = gettext(src, filename)
         global vocab
         vocab = sorted(set(vocab + sorted(set([w.lower() for w in text])))) 
@@ -42,8 +57,6 @@ def getfrequency(src):
 
 # COMMAND ldatokens
 def getldatokens(src):
-    # this guy here imports a high-end English dictionary. warning: it's just slow, don't ctrl+c 
-    tagger = nltk.UnigramTagger(nltk.corpus.brown.tagged_sents())
 
     # nltk.help.upenn_tagset() # to see all
     filter_pos = set([
@@ -89,10 +102,38 @@ def getldatokens(src):
     print(freqs)
 
 
+# COMMAND chunk 
+# NP: nouns with prepositions, articles, and adjectives => entities with attributes
+# VP: verbs (simple and compound), last verb in VP in infinitive =>  relations
+# TODO: separate the verb to be! B.* tags no longer working <BEM>?<BER>?<BEZ>?<BEN>?<BED>?<BEDZ>?
+
+grammar = '''
+NP:   {<DT>?<JJ.*>*<NN>*}  
+VP:   {<VBP>?<VBZ>?<VBD>?<RB>?<V.*>}
+PREP: {<IN>}
+PRON: {<PR.*>}
+PP:   {<PREP>?<PRON>?<NP>}
+OBJ:  {<IN><NP|PP>*} 
+'''
+
+def chunk(src):
+    # this guy here imports a high-end English dictionary. warning: it's just slow, don't ctrl+c 
+    tagger = nltk.UnigramTagger(nltk.corpus.brown.tagged_sents())
+
+    for filename in glob.glob(os.path.join(src, '*.txt')):
+        sentences = getsents(src, filename) # 2D array of sentences 
+        parts_of_speech = list(map(nltk.pos_tag, text)) # 2D array of tuples (word, pos)
+        chunker = Regexp(grammar)                       # will split words into groups as in grammar
+        chunks  = map(chunker.parse, parts_of_speech)
+        # for c in chunks: 
+        #     c.draw() 
+        
+
 commands = {
     'vocab': getvocab,
     'freq': getfrequency,
     'ldatokens': getldatokens,
+    'chunk': chunk
 }
 
 if len(sys.argv) <= 2:
@@ -105,6 +146,6 @@ if len(sys.argv) > 2:
     if commands.get(com, False):
         commands[com](src)
     else:
-        print("<command> can be \n vocab \n freq \n ldatokens")
+        print("<command> can be \n vocab \n freq \n ldatokens \n chunk")
         sys.exit(0)    
 
