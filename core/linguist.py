@@ -5,7 +5,8 @@ import glob
 import sys
 import numpy
 import itertools
-import nltk 
+from nltk.stem.snowball import SnowballStemmer 
+from nltk.corpus import stopwords
 
 # Use script by calling $ python linguist.py <command> <source>
 
@@ -33,7 +34,7 @@ def getsents(filename):
 
 
 
-# -- linguist's commands -------------------------------------------------------------
+# -- analysis ------------------------------------------------------------------------
 
 # -- COMMAND vocab -------------------------------------------------------------------
 # Get the union of the vocabularies of all documents in the source folder
@@ -57,6 +58,107 @@ def getfrequency(src, args):
         freqs = freqs + freq     # find frequencies and add to total frequency distribution
 
     return freqs
+
+
+
+# -- natural language processing -----------------------------------------------------
+
+# -- COMMAND chunk -------------------------------------------------------------------
+# COMMAND chunk 
+grammar = '''
+NP:   {<DT>?<JJ.*>*<NN.*>*}  
+VP:   {<VBP>?<VBZ>?<VBD>?<RB>?<V.*>}
+PREP: {<IN>}
+PRON: {<PR.*>}
+PP:   {<PREP>?<PRON>?<NP>}
+OBJ:  {<IN><NP|PP>*} 
+'''
+
+def chunk(src, args):
+
+    for filename in glob.glob(os.path.join(src, '*.txt')):
+        sentences = getsents(filename)                       # 2D array of sentences 
+        parts_of_speech = list(map(nltk.pos_tag, sentences)) # 2D array of tuples (word, pos)
+        chunker = nltk.RegexpParser(grammar)                 # will split words into groups as in grammar
+        chunks  = list(map(chunker.parse, parts_of_speech))
+        for c in chunks: 
+            c.draw()
+
+        return chunks 
+       
+
+
+# -- COMMAND ldatokens ---------------------------------------------------------------
+# List of parts of speech which are not stop words
+# nltk.help.upenn_tagset() # to see all
+filter_pos = set([
+    # 'CD'  , # numeral: cardinal
+    'JJ'  ,  # ordinal adjective or numeral
+    'JJR' ,  # comparative adjective
+    'JJS' ,  # superlative adjective
+    'NN'  ,  # singular or mass common noun
+    'NNS' ,  # plural common noun
+    'NNP' ,  # singular proper noun
+    'NNPS',  # plural proper noun
+    # 'RB'  ,  # adverb
+    'RBR' ,  # comparative adverb
+    'RBS' ,  # superlative adverb
+    'VB'  ,  # verb    
+    'VBD' ,  # verb past tense
+    'VBG' ,  # verb present participle or gerund
+    'VBN' ,  # verb past participle
+    'VBP' ,  # verb present
+    'VBZ' ,  # verb present 3rd person singular     
+])
+# importing the NLTK stopword corpus
+# words can be seen here http://snowball.tartarus.org/algorithms/english/stop.txt
+stopwords_corpus = stopwords.words('english')
+
+# Helper to filter out stop words
+def filter_stop_words(text):
+    # use the tagger to identify part of speech 
+    parts_of_speech = nltk.pos_tag(text)
+    # filter out the pos of stop words
+    lda_parts_of_speech_filter = filter(lambda  pair : pair[1] in filter_pos, parts_of_speech)
+    # get the text in regular and all lowercase
+    # filter out the nltk stopwords corpus
+    lda_corpus_filter = filter(lambda pair : pair[0] not in stopwords_corpus, lda_parts_of_speech_filter) 
+    lda_text  = [pair[0] for pair in lda_corpus_filter]
+    lda_lower = [word.lower() for word in lda_text]
+    
+    return (lda_text, lda_lower)
+
+
+# Remove the stop words and return the new text, vocabulary, and word frequence for a document
+def fileldatokens(filename):
+
+    text = getwords(filename)
+
+    (lda_text, lda_lower) = filter_stop_words(text) 
+
+    vocab = sorted(set(vocab + lda_lower)) 
+    freq  = nltk.FreqDist(lda_lower)
+    freqs = freqs + freq
+    
+    return (lda_text, vocab, freqs)
+
+# Remove the stop words and return the new text, vocabulary, and word frequences for all documents in the source folder
+def getldatokens(src, args):
+
+    for filename in glob.glob(os.path.join(src, '*.txt')):
+        text = getwords(filename)
+
+        (lda_text, lda_lower) = filter_stop_words(text) 
+
+        global vocab
+        vocab = sorted(set(vocab + lda_lower)) 
+                                # get vocabulary and add to total vocabulary 
+        
+        freq  = nltk.FreqDist(lda_lower)
+        global freqs
+        freqs = freqs + freq    # find frequencies and add to total frequency distribution
+        
+        return (lda_text, vocab, freqs)
 
 
 
@@ -94,109 +196,13 @@ def getfreqsentences(src, args):
         else:
             return list(itertools.islice(list(map(lambda pair:pair[0], sortedfreqs)), 10))
 
-
-# -- COMMAND ldatokens ---------------------------------------------------------------
-# List of parts of speech which are not stop words
-# nltk.help.upenn_tagset() # to see all
-filter_pos = set([
-    # 'CD'  , # numeral: cardinal
-    'JJ'  ,  # ordinal adjective or numeral
-    'JJR' ,  # comparative adjective
-    'JJS' ,  # superlative adjective
-    'NN'  ,  # singular or mass common noun
-    'NNS' ,  # plural common noun
-    'NNP' ,  # singular proper noun
-    'NNPS',  # plural proper noun
-    # 'RB'  ,  # adverb
-    'RBR' ,  # comparative adverb
-    'RBS' ,  # superlative adverb
-    'VB'  ,  # verb    
-    'VBD' ,  # verb past tense
-    'VBG' ,  # verb present participle or gerund
-    'VBN' ,  # verb past participle
-    'VBP' ,  # verb present
-    'VBZ' ,  # verb present 3rd person singular     
-])
-filter_verbs = set([ 'be', 'am', 'are', 'is', 'was', 'were', 'have', 'has', 'had', 'can', 'shall', 'will', 'could', 'should', 'would' ])
-verbs_pos = set([ 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ' ])
-
-# Helper to filter out stop words
-def filter_stop_words(text):
-    # use the tagger to identify part of speech 
-    parts_of_speech = nltk.pos_tag(text)
-    # filter out the pos of stop words
-    lda_parts_of_speech_filter = filter(lambda  pair : pair[1] in filter_pos, parts_of_speech)
-    # filter out the verbs
-    lda_verbs_filter = filter(lambda pair : not (pair[0] in filter_verbs and pair[1] in verbs_pos), lda_parts_of_speech_filter)
-    # get the text in regular and all lowercase
-    lda_text  = [pair[0] for pair in lda_verbs_filter]
-    lda_lower = [word.lower() for word in lda_text]
-    
-    return (lda_text, lda_lower)
-
-# Remove the stop words and return the new text, vocabulary, and word frequence for a document
-def fileldatokens(filename):
-    text = getwords(filename)
-
-    (lda_text, lda_lower) = filter_stop_words(text) 
-
-    vocab = sorted(set(vocab + lda_lower)) 
-    freq  = nltk.FreqDist(lda_lower)
-    freqs = freqs + freq
-    
-    return (lda_text, vocab, freqs)
-
-# Remove the stop words and return the new text, vocabulary, and word frequences for all documents in the source folder
-def getldatokens(src, args):
-
-    for filename in glob.glob(os.path.join(src, '*.txt')):
-        text = getwords(filename)
-
-        (lda_text, lda_lower) = filter_stop_words(text) 
-
-        global vocab
-        vocab = sorted(set(vocab + lda_lower)) 
-                                # get vocabulary and add to total vocabulary 
-        
-        freq  = nltk.FreqDist(lda_lower)
-        global freqs
-        freqs = freqs + freq    # find frequencies and add to total frequency distribution
-        
-        return (lda_text, vocab, freqs)
-
-
-
-# COMMAND chunk 
-# NP: nouns with prepositions, articles, and adjectives => entities with attributes
-# VP: verbs (simple and compound), last verb in VP in infinitive =>  relations
-# TODO: separate the verb to be! B.* tags no longer working <BEM>?<BER>?<BEZ>?<BEN>?<BED>?<BEDZ>?
-
-grammar = '''
-NP:   {<DT>?<JJ.*>*<NN.*>*}  
-VP:   {<VBP>?<VBZ>?<VBD>?<RB>?<V.*>}
-PREP: {<IN>}
-PRON: {<PR.*>}
-PP:   {<PREP>?<PRON>?<NP>}
-OBJ:  {<IN><NP|PP>*} 
-'''
-
-def chunk(src, args):
-
-    for filename in glob.glob(os.path.join(src, '*.txt')):
-        sentences = getsents(filename)             # 2D array of sentences 
-        parts_of_speech = list(map(nltk.pos_tag, sentences)) # 2D array of tuples (word, pos)
-        chunker = Regexp(grammar)                       # will split words into groups as in grammar
-        chunks  = map(chunker.parse, parts_of_speech)
-        # for c in chunks: 
-        #     c.draw() 
-        
-
+# -----------------------------------------------------------------------------------
 commands = {
     'vocab': getvocab,
     'freq': getfrequency,
     'freqsentences': getfreqsentences,
+    'chunk': chunk,
     'ldatokens': getldatokens,
-    'chunk': chunk
 }
 
 if len(sys.argv) <= 2:
