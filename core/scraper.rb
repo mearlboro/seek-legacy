@@ -159,6 +159,11 @@ def parse(agent, args)
       dest = args[1]
       extract_file_from_url(src, dest)
     end
+    opts.on("-w", "--wiki", "Download file from wikipedia category") do |p|
+      $opts << "-w"
+      src = args[0]
+      wiki_scrape(agent, src)
+    end
     opts.on_tail("-h", "--help", "Show this message") do
       $opts << "-h"
       puts opts
