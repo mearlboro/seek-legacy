@@ -3,6 +3,7 @@ import nltk
 import os
 import glob
 import sys
+import numpy
 from nltk import tokenize
 from nltk.corpus import treebank
 
@@ -43,7 +44,6 @@ def getvocab(src):
         global vocab
         vocab = sorted(set(vocab + sorted(set([w.lower() for w in words])))) 
                                  # get vocabulary and add to total vocabulary
-    print(vocab)
     return vocab 
 
 
@@ -57,7 +57,6 @@ def getfrequency(src):
         global freqs 
         freqs = freqs + freq     # find frequencies and add to total frequency distribution
 
-    print(freqs)
     return freqs
 
 
@@ -85,12 +84,11 @@ def getfreqsentences(src):
         # when summing frequencies per sentence thus use wordfreqs
         global sentfreqs
         for sent in sentences:
-            sentfreqs = sentfreqs + [(sent, sum(list(map(lambda word: word in vocab and wordfreqs.get(word) or 0, sent))))]
+            sentfreqs = sentfreqs + [(sent, numpy.mean(list(map(lambda word: word in vocab and wordfreqs.get(word) or 0, sent))))]
 
         # sort by relevance descending     
         sortedfreqs = sorted(sentfreqs, key=lambda x:x[1], reverse=True) 
         
-        print(sortedfreqs)
         return sortedfreqs
 
 
@@ -153,7 +151,6 @@ def getldatokens(src):
         global freqs
         freqs = freqs + freq    # find frequencies and add to total frequency distribution
         
-        print(lda_text)
         return (lda_text, vocab, freqs)
 
 
@@ -202,7 +199,7 @@ if len(sys.argv) > 2:
         sys.exit(0)
     print("Executing linguist " + com + " on directory " + src + " ...")
     if commands.get(com, False):
-        commands[com](src)
+        print(commands[com](src))
     else:
         print("<command> can be \n vocab \n freq \n freqsentences \n ldatokens \n chunk")
         sys.exit(0)    
