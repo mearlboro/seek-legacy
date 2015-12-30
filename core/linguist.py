@@ -4,9 +4,8 @@ import os
 import glob
 import sys
 import numpy
-from nltk import tokenize
-from nltk.corpus import treebank
-
+import itertools
+import nltk 
 
 # Use script by calling $ python linguist.py <command> <source>
 
@@ -38,7 +37,7 @@ def getsents(filename):
 
 # -- COMMAND vocab -------------------------------------------------------------------
 # Get the union of the vocabularies of all documents in the source folder
-def getvocab(src):
+def getvocab(src, args):
     for filename in glob.glob(os.path.join(src, '*.txt')):
         words = getwords(filename)
         global vocab
@@ -50,7 +49,7 @@ def getvocab(src):
 
 # -- COMMAND freq --------------------------------------------------------------------
 # Get the total word frequencies for all documents in the source folder
-def getfrequency(src):
+def getfrequency(src, args):
     for filename in glob.glob(os.path.join(src, '*.txt')):
         words = getwords(filename)
         freq  = nltk.FreqDist([w.lower() for w in words])
@@ -74,9 +73,10 @@ def filefreqsentences(filename):
     return sorted(sentfreqs, key=lambda x:x[1], reverse=True)
     
 # Get the sentence frequency based on word frequency of all sentences of all documents in the source folder
-def getfreqsentences(src):
+# <args> represents number of relevant sentences returned, all if 0
+def getfreqsentences(src, args):
     # eliminate stop words, as they are not relevant when calculating the most relevant sentences
-    (lda_text, vocab, wordfreqs) = getldatokens(src)
+    (lda_text, vocab, wordfreqs) = getldatokens(src, args)
     for filename in glob.glob(os.path.join(src, '*.txt')):
         words = getwords(filename)
         sentences = getsents(filename) # 2D array of sentences 
@@ -84,19 +84,22 @@ def getfreqsentences(src):
         # when summing frequencies per sentence thus use wordfreqs
         global sentfreqs
         for sent in sentences:
-            sentfreqs = sentfreqs + [(sent, numpy.mean(list(map(lambda word: word in vocab and wordfreqs.get(word) or 0, sent))))]
+            sentfreqs = sentfreqs + [(sent, numpy.mean(list(map(lambda word: word.lower() in vocab and wordfreqs.get(word) or 0, sent))))]
 
         # sort by relevance descending     
         sortedfreqs = sorted(sentfreqs, key=lambda x:x[1], reverse=True) 
-        
-        return sortedfreqs
+
+        if args == 0:
+            return sortedfreqs
+        else:
+            return list(itertools.islice(list(map(lambda pair:pair[0], sortedfreqs)), 10))
 
 
 # -- COMMAND ldatokens ---------------------------------------------------------------
 # List of parts of speech which are not stop words
 # nltk.help.upenn_tagset() # to see all
 filter_pos = set([
-     # 'CD'  , # numeral: cardinal
+    # 'CD'  , # numeral: cardinal
     'JJ'  ,  # ordinal adjective or numeral
     'JJR' ,  # comparative adjective
     'JJS' ,  # superlative adjective
@@ -104,7 +107,7 @@ filter_pos = set([
     'NNS' ,  # plural common noun
     'NNP' ,  # singular proper noun
     'NNPS',  # plural proper noun
-    'RB'  ,  # adverb
+    # 'RB'  ,  # adverb
     'RBR' ,  # comparative adverb
     'RBS' ,  # superlative adverb
     'VB'  ,  # verb    
@@ -114,40 +117,48 @@ filter_pos = set([
     'VBP' ,  # verb present
     'VBZ' ,  # verb present 3rd person singular     
 ])
+filter_verbs = set([ 'be', 'am', 'are', 'is', 'was', 'were', 'have', 'has', 'had', 'can', 'shall', 'will', 'could', 'should', 'would' ])
+verbs_pos = set([ 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ' ])
+
+# Helper to filter out stop words
+def filter_stop_words(text):
+    # use the tagger to identify part of speech 
+    parts_of_speech = nltk.pos_tag(text)
+    # filter out the pos of stop words
+    lda_parts_of_speech_filter = filter(lambda  pair : pair[1] in filter_pos, parts_of_speech)
+    # filter out the verbs
+    lda_verbs_filter = filter(lambda pair : not (pair[0] in filter_verbs and pair[1] in verbs_pos), lda_parts_of_speech_filter)
+    # get the text in regular and all lowercase
+    lda_text  = [pair[0] for pair in lda_verbs_filter]
+    lda_lower = [word.lower() for word in lda_text]
+    
+    return (lda_text, lda_lower)
 
 # Remove the stop words and return the new text, vocabulary, and word frequence for a document
 def fileldatokens(filename):
     text = getwords(filename)
-    parts_of_speech = nltk.pos_tag(text)
 
-    lda_parts_of_speech = filter(lambda  pos : pos[1] in filter_pos, parts_of_speech)
-    lda_text = [pos[0].lower() for pos in lda_parts_of_speech]
+    (lda_text, lda_lower) = filter_stop_words(text) 
 
-    vocab = sorted(set(vocab + lda_text)) 
-    freq  = nltk.FreqDist(lda_text)
+    vocab = sorted(set(vocab + lda_lower)) 
+    freq  = nltk.FreqDist(lda_lower)
     freqs = freqs + freq
     
     return (lda_text, vocab, freqs)
 
 # Remove the stop words and return the new text, vocabulary, and word frequences for all documents in the source folder
-def getldatokens(src):
+def getldatokens(src, args):
 
     for filename in glob.glob(os.path.join(src, '*.txt')):
         text = getwords(filename)
 
-        # use the tagger to identify and remove lda stop words
-        # keep both vocabs and freqs
-        parts_of_speech = nltk.pos_tag(text)
-
-        # filter the good pos
-        lda_parts_of_speech = filter(lambda  pos : pos[1] in filter_pos, parts_of_speech)
-        lda_text = [pos[0].lower() for pos in lda_parts_of_speech]
+        (lda_text, lda_lower) = filter_stop_words(text) 
 
         global vocab
-        vocab = sorted(set(vocab + lda_text)) 
+        vocab = sorted(set(vocab + lda_lower)) 
                                 # get vocabulary and add to total vocabulary 
         
-        freq  = nltk.FreqDist(lda_text)
+        freq  = nltk.FreqDist(lda_lower)
         global freqs
         freqs = freqs + freq    # find frequencies and add to total frequency distribution
         
@@ -169,7 +180,7 @@ PP:   {<PREP>?<PRON>?<NP>}
 OBJ:  {<IN><NP|PP>*} 
 '''
 
-def chunk(src):
+def chunk(src, args):
 
     for filename in glob.glob(os.path.join(src, '*.txt')):
         sentences = getsents(filename)             # 2D array of sentences 
@@ -192,14 +203,17 @@ if len(sys.argv) <= 2:
     print("the linguist expects the following command \n linguist.py <command> <src>")
     sys.exit(0)
 if len(sys.argv) > 2:
-    com = sys.argv[1]
-    src = sys.argv[2]
+    com  = sys.argv[1]
+    src  = sys.argv[2]
+    args = 0
+    if len(sys.argv) > 3:
+        args = int(sys.argv[3])
     if not os.path.isdir(src): 
         print("<src> is not a directory")
         sys.exit(0)
     print("Executing linguist " + com + " on directory " + src + " ...")
     if commands.get(com, False):
-        print(commands[com](src))
+        print(commands[com](src, args))
     else:
         print("<command> can be \n vocab \n freq \n freqsentences \n ldatokens \n chunk")
         sys.exit(0)    
