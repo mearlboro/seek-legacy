@@ -1,4 +1,25 @@
 module Scrapy
+
+  def wiki_scrape(agent, url)
+    Dir.chdir("../raw/text/")
+    page = agent.get(url)
+    links = page.parser.xpath('//a[contains(@class, "CategoryTreeLabel")]')
+    links.each do |link|
+      citizenship_page = agent.get(link['href'])
+      puts link.text()
+      Dir.mkdir(link.text()) unless File.exists?(link.text())
+      Dir.chdir(link.text())
+      sleep(1)
+      people = citizenship_page.parser.xpath('//div[@class="mw-category-group"]/ul/li/a').map { |link| link['href'] }
+      sleep(0.5)
+      people.each do |person|
+        paragraph_scrape(agent, person)
+        sleep(0.5)
+      end
+      Dir.chdir("..")
+    end
+  end
+
   def paragraph_scrape(agent, list_url)
     # Gets page html
     page = agent.get(list_url)
@@ -15,8 +36,8 @@ module Scrapy
     File.open(title + ".txt", 'w') do |f|
       f << content
     end
-    print title
-    exit
+    puts title
+    # exit
     # return title
   end
 
