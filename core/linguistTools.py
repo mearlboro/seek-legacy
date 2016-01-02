@@ -4,13 +4,10 @@ import string
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 # "NLP with Python" book, chapter 6.2, pp234
 
-
-
 # Tokenize text into words, punctuation, and spaces
 class WordPunctSpaceTokenizer(nltk.tokenize.RegexpTokenizer):
     def __init__(self):
-        nltk.tokenize.RegexpTokenizer.__init__(self, r'\w+|\s+|\.+|[\-\&lt;\&gt;\=]+|[^\w\s]')
-                                                   # r'\w+|[^\w\s]|\s+')
+        nltk.tokenize.RegexpTokenizer.__init__(self, r'\w+|\s+|\.+|[\-\\=]+|[^\w\s]')
 
 # Tokenize text into sentences
 class SentenceTokenizer():
@@ -18,8 +15,8 @@ class SentenceTokenizer():
     def punctuation_features(self, toks, i):
         return {
             'punct': toks[i],
-            'is-next-capitalized': (i < len(toks)-1) and toks[i+1][0].isupper(),
-            'lower-prev': toks[i-1].lower(),
+            'is-next-capitalized': (i < len(toks) - 1) and toks[i+1][0].isupper(),
+            'lower-or-punct-prev': toks[i-1].lower() or toks[i-1] in string.punctuation,
             'is-prev-one-char': len(toks[i-1]) == 1
         }
  
@@ -33,7 +30,6 @@ class SentenceTokenizer():
         toks = []
         bounds = set()
         offset = 0
-        
         for sent in training_sents:
             toks.extend(sent)  # union of toks in all sentences
             offset = offset + len(sent)  
@@ -44,9 +40,11 @@ class SentenceTokenizer():
                        for i in range(1, len(toks)-1)
                        if toks[i] in '.?!']
  
-        # The classifier uses Naive Bayes classifier for fast training with the Treebank corpus
-        train_set = featuresets
-        self.classifier = nltk.NaiveBayesClassifier.train(train_set)
+        # Naive Bayes classifier for training with the Treebank corpus
+        size = int(len(featuresets)*0.2)
+        train_set, test_set = featuresets[size:], featuresets[:size] 
+        self.classifier = nltk.DecisionTreeClassifier.train(train_set)
+        print(nltk.classify.accuracy(self.classifier, test_set))
  
 
     # Use the classifier to segment word toks into sentences
@@ -70,6 +68,8 @@ class SentenceTokenizer():
 
         # tokenise with the Regexp tokenizer thus keeping the punctuation, words, and spaces
         toks = self.tokenizer.tokenize(text)
+        # filter out irrelevant punctuation
+        toks = list(filter(lambda tok: tok not in '"()[]{}', toks))
 
         # Create list of sentences using the classifier, then iterate through words in a sentence to collapse abbreviations into single words
         sentences = []
