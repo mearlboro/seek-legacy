@@ -10,7 +10,7 @@ import nltk.chunk
 from nltk.collocations import *
 from nltk.collocations import BigramAssocMeasures
 from nltk.collocations import TrigramAssocMeasures
-
+from nltk.tokenize import MWETokenizer
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 # "NLP with Python" book, chapter 6.2
@@ -122,7 +122,7 @@ class SentenceTokenizer():
 # -- MULTI WORD EXPRESSIONS CHUNKER --------------------------------------
 # using dictionaries found at mwe.stanford.edu/resources
 
-class SharoffMWEChunker():
+class SharoffMWETokenizer():
 
     # Helper function to generate the n-grams using chi-square test from the treebank
     # ngram is a function: nltk.bigram or nltk.trigram
@@ -204,6 +204,26 @@ class SharoffMWEChunker():
             toks.append(words[start:])
         return toks
  
+
+
+
+# -- MULTI WORD EXPRESSIONS CHUNKER -------------------------------------------
+# using dictionaries found at mwe.stanford.edu/resources
+
+class McCarthyMWETokenizer(MWETokenizer):
+    # this chunker is static and uses a list of 116 frequent phrases found by McCarthy
+    # with the nltk standard MWE chunker
+
+    def __init__(self):
+        # get the McCarthy dictionary
+        f = open("../dictionaries/mccarthy.json", 'r+')
+        self.McCarthyDict = json.load(f)
+        f.close()
+
+        self.tokenizer = MWETokenizer()
+        for key in self.McCarthyDict.keys():
+            self.tokenizer.add_mwe(nltk.word_tokenize(key))
+
 
 
 
