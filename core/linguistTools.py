@@ -1,8 +1,11 @@
 import nltk
 import string
- 
+import os
+from nltk.corpus import wordnet
+from nltk.collocations import *
+
 # -- SENTENCE TOKENIZER ---------------------------------------------------
-# "NLP with Python" book, chapter 6.2, pp234
+# "NLP with Python" book, chapter 6.2
 
 # Tokenize text into words, punctuation, and spaces
 class WordPunctSpaceTokenizer(nltk.tokenize.RegexpTokenizer):
@@ -40,7 +43,7 @@ class SentenceTokenizer():
                        for i in range(1, len(toks)-1)
                        if toks[i] in '.?!']
  
-        # Naive Bayes classifier for training with the Treebank corpus
+        # Decision Tree classifier for training with the Treebank corpus
         size = int(len(featuresets)*0.2)
         train_set, test_set = featuresets[size:], featuresets[:size] 
         self.classifier = nltk.DecisionTreeClassifier.train(train_set)
@@ -104,3 +107,122 @@ class SentenceTokenizer():
             sentences.append(sentence)
  
         return sentences
+
+
+
+
+# -- MULTI WORD EXPRESSIONS CHUNKER ----------------------
+# "NLP with Python" book, chapter 2.5
+# using dictionaries found at mwe.stanford.edu/resources
+
+class MultiWordExprChunker():
+
+    # sharoff dictionary consists of a list of expressions, and their statistical collocation measures, the feature extractor below uses it to find out whether an expression is in the sharoff dictionary
+    def Sharoff_features(self, expr):
+        return {
+            'expr': expr,
+            'T-score':  self.SharoffDict[expr]['T']  or 0,
+            'MI-score': self.SharoffDict[expr]['MI'] or 0,
+            'LL-score': self.SharoffDict[expr]['LL'] or 0,
+            'number-of-words': len(expr), 
+        }
+ 
+    # baldwin dictionary consists of a list of expressions, whether they are transitive or not, and their frequency 
+    def Baldwin_features(self, sent, expr):
+        return {
+            'expr': expr,
+            'transitive': self.BaldwinDict[expr][0] == is_transitive(sent, expr),
+            'score':      self.BaldwinDict[expr][1] > 10,
+            'number-of-words': len(expr),
+        }
+    # to find whether a verb is transitive, searches recursivly for 2 sibling nodes, one a VB and one an NP
+    # def is_transitive(sent, verb):
+    #     if  (len(tree) >= 2 and
+    #          tree[0].node == 'VB' and
+    #          tree[0,0] == verb and
+    #      tree[1].node == 'NP'):      
+    #             return 1 
+    #     else:
+    #         for child in tree:
+    #              if isinstance(child, Tree):
+    #                  if contains_trans(child,verb):
+    #                      return 1
+    #     return 0
+
+    
+    # Builds the classifier
+    def __init__(self):
+        # build the Sharoff and Baldwin dictionaries
+        SharoffDict = {}
+        f = open(r"../dictionaries/sharoff.txt")
+        lines = f.readlines()
+        f.close()
+        i = 0
+        currWordDict = {}
+        for i in range(len(lines)):
+            l = lines[i]
+            items = l.split(': ')
+            currWordDict[items[0]] = float(items[2][:-2])
+            if i % 3 == 2:
+                SharoffDict[items[1][:-1]] = currWordDict
+                currWordDict = {}
+
+        self.SharoffDict = SharoffDict
+
+        BaldwinDict = []
+
+
+        # join the sentence corpus into a text
+        training_sents = nltk.corpus.treebank_raw.sents()
+        toks = []
+        bounds = set()
+        offset = 0
+        for sent in training_sents:
+            sent = list(filter(lambda w:w not in ['START'] and w not in string.punctuation, sent))
+            toks.extend(sent)  # union of toks in all sentences
+            offset = offset + len(sent)  
+            bounds.add(offset-1) # known boundaries of sentences 
+
+
+        # to create sets of examples we use the collocations in treebank corpus
+        bigrams = nltk.bigrams(toks)
+        bigram_measures = nltk.collocations.BigramAssocMeasures()
+        finder2 = BigramCollocationFinder.from_words(
+            nltk.corpus.treebank_raw.words(),
+            window_size = 20)
+        found2 = finder2.above_score(bigram_measures.raw_freq, 1.0 / len(tuple(nltk.bigrams(toks))))
+        trigrams = nltk.trigrams(toks)
+        trigram_measures = nltk.collocations.TrigramAssocMeasures()
+        finder3 = TrigramCollocationFinder.from_words(
+            nltk.corpus.treebank_raw.words(),
+            window_size = 20)
+        found3 = finder3.above_score(trigram_measures.raw_freq, 1.0 / len(tuple(nltk.trigrams(toks))))
+
+        # Create training features with sharoff dictionary
+        featuresets = [(self.Sharoff_features(expr), expr in found2 )
+                       for expr in bigrams or expr in trigrams
+                       if expr in self.SharoffDict.keys()]
+ 
+        #  classifier for training with the Treebank corpus
+        size = int(len(featuresets)*0.2)
+        train_set, test_set = featuresets[size:], featuresets[:size] 
+        self.classifier = nltk.NaiveBayesClassifier.train(train_set)
+        print(nltk.classify.accuracy(self.classifier, test_set))
+ 
+
+    # Use the classifier to segment word toks into MWEs 
+    def classify_mwe(self,words):
+        start = 0
+        toks = []
+        for ngram in list(nltk.bigrams(words)) + list(nltk.trigrams(words)):
+            if self.classifier.classify(self.Sharoff_features(ngram)) == True:
+                sents.append(words[start:i+1])
+                start = i+1
+        if start < len(words):
+            toks.append(words[start:])
+        return toks
+ 
+
+
+
+
