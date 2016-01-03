@@ -212,10 +212,13 @@ def gettopics(src, args):
 def extracttopicsupdate(src, args):
     (lda_text, vocab, freqs) = getldatokens(src, args)
     num = args[1]
-    id_freqs = transformfreqs(freqs)
-    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=vocab, id2word=id_freqs, num_topics=num)
 
-    print(lsi.print_topics(num))
+    dictionary = corpora.Dictionary([lda_text])
+    corp = [dictionary.doc2bow(lda_text)]
+
+    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
+
+    print(lsi_topics.print_topics(num))
 
 def extracttopicsinitial(src, args):
     (lda_text, vocab, freqs) = getldatokens(src, args)
@@ -225,12 +228,6 @@ def extracttopicsinitial(src, args):
 
     print(lda.print_topics(num))
 
-def transform(freqs):
-    int_freqs = {}
-    count = 0
-    for item in freqs:
-        int_freqs[count] = freqs.get(item)
-        count = count + 1
 
 
 # -----------------------------------------------------------------------------------
