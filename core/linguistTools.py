@@ -3,6 +3,8 @@ import string
 import os
 from nltk.corpus import wordnet
 from nltk.collocations import *
+import nltk.tag
+import nltk.chunk
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 # "NLP with Python" book, chapter 6.2
@@ -22,12 +24,12 @@ class SentenceTokenizer():
             'lower-or-punct-prev': toks[i-1].lower() or toks[i-1] in string.punctuation,
             'is-prev-one-char': len(toks[i-1]) == 1
         }
- 
+
     # Builds the classifier
     def __init__(self):
         # use the simple tokenizer to get words, punctuation, whitespace
         self.tokenizer = WordPunctSpaceTokenizer()
- 
+
         # join the sentence corpus into a text
         training_sents = nltk.corpus.treebank_raw.sents()
         toks = []
@@ -35,9 +37,9 @@ class SentenceTokenizer():
         offset = 0
         for sent in training_sents:
             toks.extend(sent)  # union of toks in all sentences
-            offset = offset + len(sent)  
-            bounds.add(offset-1) # known boundaries of sentences 
- 
+            offset = offset + len(sent)
+            bounds.add(offset-1) # known boundaries of sentences
+
         # Create training features by calling punctuation_features on sentence delimiters {'.', '?', '!'}
         featuresets = [(self.punctuation_features(toks,i), (i in bounds))
                        for i in range(1, len(toks)-1)
@@ -45,10 +47,10 @@ class SentenceTokenizer():
  
         # Decision Tree classifier for training with the Treebank corpus
         size = int(len(featuresets)*0.2)
-        train_set, test_set = featuresets[size:], featuresets[:size] 
+        train_set, test_set = featuresets[size:], featuresets[:size]
         self.classifier = nltk.DecisionTreeClassifier.train(train_set)
         print(nltk.classify.accuracy(self.classifier, test_set))
- 
+
 
     # Use the classifier to segment word toks into sentences
     def classify_sentences(self,words):
@@ -61,11 +63,11 @@ class SentenceTokenizer():
         if start < len(words):
             sents.append(words[start:])
         return sents
- 
+
 
     # Segment text into sentences and words
     def segment_text(self, text):
-        
+
         # turn whitespace characters into spaces: split() runs on whitespace then merge words back with spaces
         text = ' '.join(text.split())
 
@@ -96,8 +98,8 @@ class SentenceTokenizer():
                 elif (i == len(sent)-2):
                     # penultimate end of the sentence - break off the punctuation
                     sentence.append(tok+word)
-                    tok = ""           
-                else:            
+                    tok = ""
+                else:
                     # accumulate a token in tok
                     tok = tok + word
 
@@ -105,19 +107,20 @@ class SentenceTokenizer():
             if len(tok) > 0:
                 sentence.append(tok)
             sentences.append(sentence)
- 
+
         return sentences
 
 
 
 
-# -- MULTI WORD EXPRESSIONS CHUNKER ----------------------
+# -- MULTI WORD EXPRESSIONS CHUNKER --------------------------------------
 # "NLP with Python" book, chapter 2.5
 # using dictionaries found at mwe.stanford.edu/resources
 
 class MultiWordExprChunker():
 
-    # sharoff dictionary consists of a list of expressions, and their statistical collocation measures, the feature extractor below uses it to find out whether an expression is in the sharoff dictionary
+    # sharoff dictionary consists of a list of expressions, and their statistical collocation measures
+    # the feature extractor below uses it to find out whether an expression is in the sharoff dictionary
     def Sharoff_features(self, expr):
         return {
             'expr': expr,
@@ -224,5 +227,26 @@ class MultiWordExprChunker():
  
 
 
+# -- CHUNK PARSER -------------------------------------------------------------
+class ChunkParser(nltk.ChunkParserI):
+    def __init__(self, train_sents):
+        # Create word, pos, IOB tag triples
+        train_data = [[(t,c) for w,t,c in nltk.chunk.tree2conlltags(sent)]
+            for sent in train_sents]
+        self.tagger = nltk.TrigramTagger(train_data)
 
+    def parse(self, sentence):
+        pos_tags = [pos for (word,pos) in sentence]
+        tagged_pos_tags = self.tagger.tag(pos_tags)
+        chunktags = [chunktag for (pos, chunktag) in tagged_pos_tags]
+        conlltags = [(word, pos, chunktag) for ((word,pos), chunktag) in zip(sentence, chunktags)]
+        return nltk.chunk.conlltags2tree(conlltags)
 
+treebank_sents = nltk.corpus.treebank_chunk.chunked_sents()
+
+train_sents = treebank_sents[:2000]
+test_sents = treebank_sents[2000:]
+
+NPChunker = ChunkParser(train_sents)
+
+print(NPChunker.evaluate(test_sents))
