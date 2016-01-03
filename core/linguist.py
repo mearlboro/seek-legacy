@@ -145,6 +145,7 @@ def fileldatokens(filename):
 # Remove the stop words and return the new text, vocabulary, and word frequences for all documents in the source folder
 def getldatokens(src, args):
 
+    lda_texts = []
     for filename in glob.glob(os.path.join(src, '*.txt')):
         text = getwords(filename)
 
@@ -158,7 +159,9 @@ def getldatokens(src, args):
         global freqs
         freqs = freqs + freq    # find frequencies and add to total frequency distribution
         
-        return (lda_text, vocab, freqs)
+        lda_texts += lda_text
+
+    return (lda_texts, vocab, freqs)
 
 
 
