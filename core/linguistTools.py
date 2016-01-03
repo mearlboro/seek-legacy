@@ -1,14 +1,20 @@
-import nltk
-import string
-import os
-from nltk.corpus import wordnet
-from nltk.collocations import *
-import nltk.tag
-import nltk.chunk
 import sys
-import os
 import glob
 import nltk.data
+
+import string
+import os
+import json
+from functools import reduce
+from operator import add
+
+import nltk
+import nltk.tag
+import nltk.chunk
+from nltk.collocations import *
+from nltk.collocations import BigramAssocMeasures
+from nltk.collocations import TrigramAssocMeasures
+from nltk.tokenize import MWETokenizer
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 # "NLP with Python" book, chapter 6.2
@@ -115,13 +121,33 @@ class SentenceTokenizer():
         return sentences
 
 # -- MULTI WORD EXPRESSIONS CHUNKER --------------------------------------
-# "NLP with Python" book, chapter 2.5
 # using dictionaries found at mwe.stanford.edu/resources
 
-class MultiWordExprChunker():
+class SharoffMWETokenizer():
 
-    # sharoff dictionary consists of a list of expressions, and their statistical collocation measures
-    # the feature extractor below uses it to find out whether an expression is in the sharoff dictionary
+    # Helper function to generate the n-grams using chi-square test from the treebank
+    # ngram is a function: nltk.bigram or nltk.trigram
+    # AssocMeasures is a class: BigramAssocMeasures or TrigramAssocMeasures
+    # CollocationFinder is a class: BigramCollocationFinder or TrigramCollocationFinder
+    def get_ngrams(self, training_sents, ngram, AssocMeasures, CollocationFinder):
+        # to create sets of examples we use the bigrams we find in the training sentences
+        ngrams = list(map(ngram, training_sents))
+        ngrams = list(map(list, ngrams)) # unwrap ngrams generator objects
+
+        ngram_measures = AssocMeasures() # will compute chi-square test for all ngrams
+        finder = CollocationFinder.from_words(
+            nltk.corpus.treebank_raw.words(),
+            window_size = 20)
+        # a list of collocation generator objects to be identified based on chi-square test
+        print('hello')
+        found = list(map(lambda x: finder.above_score(ngram_measures.raw_freq, 1.0 / x), map(len, tuple(ngrams))))
+        found2 =  reduce(add, map(list, found2)) # reduce it to the final list of collocation (warning: slow)
+
+        return (ngrams, found)
+
+
+    # sharoff dictionary consists of expressions and their statistical collocation measures
+    # the feature extractor below grabs these features from the dictionary
     def Sharoff_features(self, expr):
         return {
             'expr': expr,
@@ -156,25 +182,10 @@ class MultiWordExprChunker():
 
     # Builds the classifier
     def __init__(self):
-        # build the Sharoff and Baldwin dictionaries
-        SharoffDict = {}
-        f = open(r"../dictionaries/sharoff.txt")
-        lines = f.readlines()
+        # get the Sharoff dictionary
+        f = open("../dictionaries/sharoff.json", 'r+')
+        self.SharoffDict = json.load(f)
         f.close()
-        i = 0
-        currWordDict = {}
-        for i in range(len(lines)):
-            l = lines[i]
-            items = l.split(': ')
-            currWordDict[items[0]] = float(items[2][:-2])
-            if i % 3 == 2:
-                SharoffDict[items[1][:-1]] = currWordDict
-                currWordDict = {}
-
-        self.SharoffDict = SharoffDict
-
-        BaldwinDict = []
-
 
         # join the sentence corpus into a text
         training_sents = nltk.corpus.treebank_raw.sents()
@@ -226,15 +237,15 @@ class MultiWordExprChunker():
             toks.append(words[start:])
         return toks
 
-chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
-# tagger = nltk.data.load("taggers/treebank_aubt.pickle")
-tagger = nltk.data.load("taggers/brown_aubt.pickle")
-sent_tok = SentenceTokenizer()
-#
-for filename in glob.glob(os.path.join(sys.argv[1], '*.txt')):
-    f = open(filename, 'r+')
-    raw_text = f.read()
-    tokra = sent_tok.segment_text(raw_text)
-    tagged_tokra = list(map(nltk.pos_tag, tokra))
-    tokra_chunks = list(map(chunker.parse, tagged_tokra))
-    print(tokra_chunks[0])
+# chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
+# # tagger = nltk.data.load("taggers/treebank_aubt.pickle")
+# tagger = nltk.data.load("taggers/brown_aubt.pickle")
+# sent_tok = SentenceTokenizer()
+# #
+# for filename in glob.glob(os.path.join(sys.argv[1], '*.txt')):
+#     f = open(filename, 'r+')
+#     raw_text = f.read()
+#     tokra = sent_tok.segment_text(raw_text)
+#     tagged_tokra = list(map(nltk.pos_tag, tokra))
+#     tokra_chunks = list(map(chunker.parse, tagged_tokra))
+#     print(tokra_chunks[0])
