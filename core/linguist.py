@@ -1,5 +1,6 @@
 import numpy
 import nltk
+import gensim
 import os
 import glob
 import sys
@@ -7,6 +8,7 @@ import numpy
 import itertools
 from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import stopwords
+from gensim import corpora, models, similarities
 
 # Use script by calling $ python linguist.py <command> <source>
 
@@ -196,6 +198,41 @@ def getfreqsentences(src, args):
         else:
             return list(itertools.islice(list(map(lambda pair:pair[0], sortedfreqs)), 10))
 
+# Extract topics.
+# <src> must be a directory, <args[0]> can be 0 (initial) or 1 (update), default behaviour is initial.
+# <args[1]> must be an integer representing the number of topics to extract, default number is 10.
+def gettopics(src, args):
+    if args[0] == 1:
+        print("Update")
+        extracttopicsupdate(src, args)
+    else:
+        print("Initial")
+        extracttopicsinitial(src, args)
+
+def extracttopicsupdate(src, args):
+    (lda_text, vocab, freqs) = getldatokens(src, args)
+    num = args[1]
+
+    dictionary = corpora.Dictionary([lda_text])
+    corp = [dictionary.doc2bow(lda_text)]
+
+    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
+
+    print(lsi_topics.print_topics(num))
+
+def extracttopicsinitial(src, args):
+    (lda_text, vocab, freqs) = getldatokens(src, args)
+    num = args[1]
+
+    dictionary = corpora.Dictionary([lda_text])
+    corp = [dictionary.doc2bow(lda_text)]
+
+    lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
+
+    print(lda_topics.print_topics(num))
+
+
+
 # -----------------------------------------------------------------------------------
 commands = {
     'vocab': getvocab,
@@ -203,6 +240,7 @@ commands = {
     'freqsentences': getfreqsentences,
     'chunk': chunk,
     'ldatokens': getldatokens,
+    'topics': gettopics,
 }
 
 if len(sys.argv) <= 2:
@@ -213,7 +251,7 @@ if len(sys.argv) > 2:
     src  = sys.argv[2]
     args = 0
     if len(sys.argv) > 3:
-        args = int(sys.argv[3])
+        args = int(sys.argv[3]), int(sys.argv[4])
     if not os.path.isdir(src):
         print("<src> is not a directory")
         sys.exit(0)
