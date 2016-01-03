@@ -1,5 +1,6 @@
 import numpy
 import nltk
+import gensim
 import os
 import glob
 import sys
@@ -7,6 +8,7 @@ import numpy
 import itertools
 from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import stopwords
+from gensim import corpora, models, similarities
 
 # Use script by calling $ python linguist.py <command> <source>
 
@@ -200,7 +202,7 @@ def getfreqsentences(src, args):
 # <src> must be a directory, <args[0]> can be 0 (initial) or 1 (update), default behaviour is initial.
 # <args[1]> must be an integer representing the number of topics to extract, default number is 10.
 def gettopics(src, args):
-    if args[1] == 1:
+    if args[0] == 1:
         print("Update")
         extracttopicsupdate(src, args)
     else:
@@ -208,10 +210,28 @@ def gettopics(src, args):
         extracttopicsinitial(src, args)
 
 def extracttopicsupdate(src, args):
-    return args[1]
+    (lda_text, vocab, freqs) = getldatokens(src, args)
+    num = args[1]
+    id_freqs = transformfreqs(freqs)
+    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=vocab, id2word=id_freqs, num_topics=num)
+
+    print(lsi.print_topics(num))
 
 def extracttopicsinitial(src, args):
-    return args[1]
+    (lda_text, vocab, freqs) = getldatokens(src, args)
+    num = args[1]
+    id_freqs = transformfreqs(freqs)
+    lda_topics = gensim.models.ldamodel.LdaModel(corpus=vocab, id2word=id_freqs, num_topics=num)
+
+    print(lda.print_topics(num))
+
+def transform(freqs):
+    int_freqs = {}
+    count = 0
+    for item in freqs:
+        int_freqs[count] = freqs.get(item)
+        count = count + 1
+
 
 # -----------------------------------------------------------------------------------
 commands = {
