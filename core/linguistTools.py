@@ -3,6 +3,10 @@ import string
 import nltk.corpus
 import nltk.tag
 import nltk.chunk
+import sys
+import os
+import glob
+import nltk.data
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 # "NLP with Python" book, chapter 6.2, pp234
@@ -108,25 +112,15 @@ class SentenceTokenizer():
 
         return sentences
 
-class ChunkParser(nltk.ChunkParserI):
-    def __init__(self, train_sents):
-        # Create word, pos, IOB tag triples
-        train_data = [[(t,c) for w,t,c in nltk.chunk.tree2conlltags(sent)]
-            for sent in train_sents]
-        self.tagger = nltk.TrigramTagger(train_data)
+# chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
+# tagger = nltk.data.load("taggers/treebank_aubt.pickle")
 
-    def parse(self, sentence):
-        pos_tags = [pos for (word,pos) in sentence]
-        tagged_pos_tags = self.tagger.tag(pos_tags)
-        chunktags = [chunktag for (pos, chunktag) in tagged_pos_tags]
-        conlltags = [(word, pos, chunktag) for ((word,pos), chunktag) in zip(sentence, chunktags)]
-        return nltk.chunk.conlltags2tree(conlltags)
-
-treebank_sents = nltk.corpus.treebank_chunk.chunked_sents()
-
-train_sents = treebank_sents[:2000]
-test_sents = treebank_sents[2000:]
-
-NPChunker = ChunkParser(train_sents)
-
-print(NPChunker.evaluate(test_sents))
+# sent_tok = SentenceTokenizer()
+#
+# for filename in glob.glob(os.path.join(sys.argv[1], '*.txt')):
+#     f = open(filename, 'r+')
+#     raw_text = f.read()
+#     tokra = sent_tok.segment_text(raw_text)
+#     tagged_tokra = list(map(nltk.pos_tag, tokra))
+#     tokra_chunks = list(map(chunker.parse, tagged_tokra))
+#     print(tokra_chunks[0])
