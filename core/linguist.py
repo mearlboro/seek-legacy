@@ -223,10 +223,13 @@ def extracttopicsupdate(src, args):
 def extracttopicsinitial(src, args):
     (lda_text, vocab, freqs) = getldatokens(src, args)
     num = args[1]
-    id_freqs = transformfreqs(freqs)
-    lda_topics = gensim.models.ldamodel.LdaModel(corpus=vocab, id2word=id_freqs, num_topics=num)
 
-    print(lda.print_topics(num))
+    dictionary = corpora.Dictionary([lda_text])
+    corp = [dictionary.doc2bow(lda_text)]
+
+    lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
+
+    print(lda_topics.print_topics(num))
 
 
 
