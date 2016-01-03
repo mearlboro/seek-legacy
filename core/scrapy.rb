@@ -20,6 +20,22 @@ module Scrapy
     end
   end
 
+  def get_tuple(agent, src)
+    solution = File.open("answer.txt", "w")
+    html_dir = File.dirname(__FILE__)
+    page = agent.get("file:///#{html_dir}/#{src}")
+    rows = page.parser.xpath('//tr')
+
+    ln = rows.length - 1
+    rows[2..ln].each do |row|
+      columns = Nokogiri::HTML(row.inner_html).xpath('//td')
+      if (columns.length > 1)
+        solution << columns[0].text() + ": " + columns[4].text()
+      end
+    end
+
+  end
+
   def paragraph_scrape(agent, list_url)
     # Gets page html
     page = agent.get(list_url)

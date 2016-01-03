@@ -133,6 +133,7 @@ def parse(agent, args)
     opts.banner = "Usage: scraper.rb [options] [path-optional]"
     opts.separator ""
     opts.separator "Specific options:"
+
     opts.on("-s", "--spiral", "Scrape the Imperial Spiral repository") do |a|
       $opts << "-s"
       login = agent.get("https://spiral.imperial.ac.uk/ldap-login")
@@ -146,29 +147,39 @@ def parse(agent, args)
       loggedin_page = form.submit(button)
 
       spiral_scrape(agent, base_spiral_repo_url)
-
     end
+
     opts.on("-p", "--paragraph", "Get text from webpage paragraphs") do |p|
       $opts << "-p"
       src = args[0]
       paragraph_scrape(agent, src)
     end
+
+    opts.on("-h", "--html", "Get tuple from html file") do |p|
+      $opts << "-h"
+      src = args[0]
+      get_tuple(agent, src)
+    end
+
     opts.on("-d", "--document", "Download file from URL") do |p|
       $opts << "-d"
       src = args[0]
       dest = args[1]
       extract_file_from_url(src, dest)
     end
+
     opts.on("-w", "--wiki", "Download file from wikipedia category") do |p|
       $opts << "-w"
       src = args[0]
       wiki_scrape(agent, src)
     end
+
     opts.on_tail("-h", "--help", "Show this message") do
       $opts << "-h"
       puts opts
       exit 0
     end
+
   end
   opt_parser.parse!(args)
 end #End parse
