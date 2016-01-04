@@ -20,15 +20,38 @@ object = pickle.load(input)
 # -----------------------------------------------------------------------------------------
 
 import pickle
+from datetime import datetime
 from statistician import SentenceTokenizer
+from statistician import McCarthyMWETokenizer
+from statistician import SharoffMWETokenizer
+from statistician import ChunkParser 
 
-# pickler will dump the classes into object files  
-output  = open('skills/init.pkl', 'wb') 
-pickler = pickle.Pickler(output, -1)
+sent_tok = SentenceTokenizer()
+with open('skills/init_sent_tok.pkl', 'wb') as output:
+    pickler = pickle.Pickler(output, -1)
+    pickler.dump(sent_tok)
+print(" √ " + str(datetime.now()) + ": Created sentence tokenizer.")
+del sent_tok
 
-# instantiate the classes
+mwe_dict_tok = McCarthyMWETokenizer()
+with open('skills/init_mwe_dict.pkl', 'wb') as output:
+    pickler = pickle.Pickler(output, -1)
+    pickler.dump(mwe_dict_tok)
+print(" √ " + str(datetime.now()) + ": Created multi word expression tokenizer with McCarthy dictionary.")
+del mwe_dict_tok
 
-sentenceTokenizer = SentenceTokenizer()
-pickler.dump(sentenceTokenizer)
-del sentenceTokenizer
+mwe_stat_tok = SharoffMWETokenizer()
+with open('skills/init_mwe_stat.pkl', 'wb') as output:
+    pickler = pickle.Pickler(output, -1)
+    pickler.dump(mwe_stat_tok)
+print(" √ " + str(datetime.now()) + ": Created multi word expression tokenizer with Sharoff dictionary.")
+del mwe_stat_tok
+
+chunker = ChunkParser()
+with open('skills/init_chunk.pkl', 'wb') as output:
+    pickler = pickle.Pickler(output, -1)
+    pickler.dump(chunker)
+print(" √ " + str(datetime.now()) + ": Created multi word expression tokenizer with Sharoff dictionary.")
+del chunker
+
 
