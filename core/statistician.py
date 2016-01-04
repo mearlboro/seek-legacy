@@ -1,7 +1,8 @@
 import sys
 import os
-import glob
 import string
+import logging
+import pprint
 import json
 from datetime import datetime
 from functools import reduce
@@ -15,6 +16,8 @@ from nltk.collocations import *
 from nltk.collocations import BigramAssocMeasures
 from nltk.collocations import TrigramAssocMeasures
 from nltk.tokenize import MWETokenizer
+import gensim
+from gensim.corpora import WikiCorpus, wikicorpus
 
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
@@ -293,7 +296,7 @@ text2chunks(text):
 class ChunkParser():
     def __init__(self):
         self.chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
-        self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
+        # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
     def text2chunks(self, text):
         sent_tok = SentenceTokenizer()
@@ -304,3 +307,45 @@ class ChunkParser():
         tagged_sentences = list(map(nltk.pos_tag, tokenized_sentences))
         chunked_sentences = list(map(self.chunker.parse, tagged_sentences))
         print(chunked_sentences[0])
+
+
+
+# -- TOPIC MODELLING ----------------------------------------------------------
+
+class TopicModelling():
+    def __init__(self):
+        wiki_src = '../raw/wiki/enwiki-articles.xml.bz2'
+
+        # load the corpus of documents in the wikipedia archive and save parsed files to disk
+        self.wiki_corpus = WikiCorpus(articles)
+        self.wiki_dictionary = wiki_corpus.dictionary
+        wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
+        MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm")
+      
+        
+    # extract topics with lda
+    # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
+    # num:      number of topics to extract
+    def text2ldatopics(self, lda_text, num):
+        corp = [self.wiki_dictionary.doc2bow(lda_text)]
+
+        lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=self.wiki_dictionary, num_topics=num)
+
+        print(lda_topics.print_topics(num))
+        return lda_topics
+
+    # extract topics with lsi
+    # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
+    # num:      number of topics to extract
+    def text2lsitopics(self, lsi_text, num):
+        corp = [self.wiki_dictionary.doc2bow(lsi_text)]
+
+        lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=self.wiki_dictionary, num_topics=num)
+
+        # returns the topics as a dictionary of words and scores
+        topics = lsi_topics.print_topics(num)[0][1].split('+')
+        pairs = [topic.split('*') for topic in topics]
+        pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
+        return dict(pairs)
+
+
