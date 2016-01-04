@@ -5,8 +5,8 @@ import os
 import glob
 import sys
 import numpy
-import itertools
-from nltk.stem.snowball import SnowballStemmer
+from itertools import *
+from functools import *
 from nltk.corpus import stopwords
 from gensim import corpora, models, similarities
 
@@ -134,7 +134,7 @@ def filter_stop_words(text):
 # Remove the stop words and return the new text, vocabulary, and word frequence for a document
 def fileldatokens(filename):
 
-    text = getwords(filename)
+    text = [w.lower() for w in getwords(filename)]
 
     (lda_text, lda_lower) = filter_stop_words(text)
 
@@ -149,7 +149,7 @@ def getldatokens(src, args):
 
     lda_texts = []
     for filename in glob.glob(os.path.join(src, '*.txt')):
-        text = getwords(filename)
+        text = [w.lower() for w in getwords(filename)]
 
         (lda_text, lda_lower) = filter_stop_words(text)
 
@@ -173,9 +173,10 @@ def filefreqsentences(filename):
     words = getwords(filename)
     sentences = getsents(filename)
     (lda_text, vocab, wordfreqs) = filedatokens(src)
+    topics = gettopicsupdate(src,0,8)
     sentfreqs = []
     for sent in sentences:
-        sentfreqs = sentfreqs + [(sent, sum(list(map(lambda word: word in vocab and wordfreqs.get(word) or 0, sent))))]
+        sentfreqs = sentfreqs + [(sent, numpy.mean(list(map(lambda word: word in vocab and wordfreqs.get(word) or 0, sent))) + 0)]
 
     return sorted(sentfreqs, key=lambda x:x[1], reverse=True)
 
@@ -184,14 +185,20 @@ def filefreqsentences(filename):
 def getfreqsentences(src, args):
     # eliminate stop words, as they are not relevant when calculating the most relevant sentences
     (lda_text, vocab, wordfreqs) = getldatokens(src, args)
+    topics = extracttopicsupdate(src,[0,8])
+    print(topics) 
     for filename in glob.glob(os.path.join(src, '*.txt')):
         words = getwords(filename)
         sentences = getsents(filename) # 2D array of sentences
 
         # when summing frequencies per sentence thus use wordfreqs
+        # also add bias from topics in that phrase
         global sentfreqs
         for sent in sentences:
-            sentfreqs = sentfreqs + [(sent, numpy.mean(list(map(lambda word: word.lower() in vocab and wordfreqs.get(word) or 0, sent))))]
+            sentfreqs += [(reduce(lambda x,y: x + ' ' + y, sent),
+                numpy.mean(list(map(lambda word: word.lower() in vocab and wordfreqs.get(word) or 0, sent))) +
+                sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))  
+            )]
 
         # sort by relevance descending
         sortedfreqs = sorted(sentfreqs, key=lambda x:x[1], reverse=True)
@@ -199,7 +206,7 @@ def getfreqsentences(src, args):
         if args == 0:
             return sortedfreqs
         else:
-            return list(itertools.islice(list(map(lambda pair:pair[0], sortedfreqs)), 10))
+            return list(islice(sortedfreqs, 10))
 
 
 
@@ -210,10 +217,10 @@ def getfreqsentences(src, args):
 def gettopics(src, args):
     if args[0] == 1:
         print("Update")
-        extracttopicsupdate(src, args)
+        return extracttopicsupdate(src, args)
     else:
         print("Initial")
-        extracttopicsinitial(src, args)
+        return extracttopicsinitial(src, args)
 
 def extracttopicsupdate(src, args):
     (lda_text, vocab, freqs) = getldatokens(src, args)
@@ -224,7 +231,12 @@ def extracttopicsupdate(src, args):
 
     lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
 
-    print(lsi_topics.print_topics(num))
+    # returns the topics as a dictionary of words and scores
+    topics = lsi_topics.print_topics(num)[0][1].split('+')
+    pairs = [topic.split('*') for topic in topics]
+    pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
+    return dict(pairs)
+
 
 def extracttopicsinitial(src, args):
     (lda_text, vocab, freqs) = getldatokens(src, args)
@@ -236,6 +248,7 @@ def extracttopicsinitial(src, args):
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
 
     print(lda_topics.print_topics(num))
+    return lda_topics
 
 
 
