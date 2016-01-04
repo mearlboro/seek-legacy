@@ -3,6 +3,7 @@ import os
 import glob
 import string
 import json
+from datetime import datetime
 from functools import reduce
 from operator import add
 
@@ -17,7 +18,24 @@ from nltk.tokenize import MWETokenizer
 
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
-# "NLP with Python" book, chapter 6.2
+'''
+"NLP with Python" book, chapter 6.2
+
+The sentence tokenizer uses a custom regex tokenizer to split a given text into words,
+punctuation, and spaces (WordPunctSpaceTokenizer).
+Having the tokens as described above, it uses the punctuation_features feature extractor
+for identifying features that would help identify whether at that specific token, given 
+that it is a punctuation mark from the set ".!?", a sentence ends and another starts.
+The classifier based on these features is trained on the NLTK Treebank corpus of already
+tokenized sentences.
+
+The API consists of:
+text2sents(text):
+    gets a text in string format, splits it into tokens, then classifies them into sentences
+    input:   a text in unicode/string format
+    returns: a list of lists of tokens in unicode/string format, representing the sentences
+
+'''
 
 # Tokenize text into words, punctuation, and spaces
 class WordPunctSpaceTokenizer(nltk.tokenize.RegexpTokenizer):
@@ -27,7 +45,7 @@ class WordPunctSpaceTokenizer(nltk.tokenize.RegexpTokenizer):
 # Tokenize text into sentences
 class SentenceTokenizer():
     # extract punctuation features from token list for punctuation sign (token of index i)
-    def punctuation_features(self, toks, i):
+    def __punctuation_features(self, toks, i):
         return {
             'punct': toks[i],
             'is-next-capitalized': (i < len(toks) - 1) and toks[i+1][0].isupper(),
@@ -37,6 +55,8 @@ class SentenceTokenizer():
 
     # Builds the classifier
     def __init__(self):
+        print(str(datetime.now()) + ": Training sentence tokenizer decision tree classifier on Treebank corpus...")
+
         # use the simple tokenizer to get words, punctuation, whitespace
         self.tokenizer = WordPunctSpaceTokenizer()
 
@@ -51,7 +71,7 @@ class SentenceTokenizer():
             bounds.add(offset-1) # known boundaries of sentences
 
         # Create training features by calling punctuation_features on sentence delimiters {'.', '?', '!'}
-        featuresets = [(self.punctuation_features(toks,i), (i in bounds))
+        featuresets = [(self.__punctuation_features(toks,i), (i in bounds))
                        for i in range(1, len(toks)-1)
                        if toks[i] in '.?!']
 
@@ -59,15 +79,16 @@ class SentenceTokenizer():
         size = int(len(featuresets)*0.2)
         train_set, test_set = featuresets[size:], featuresets[:size]
         self.classifier = nltk.DecisionTreeClassifier.train(train_set)
-        print(nltk.classify.accuracy(self.classifier, test_set))
+
+        print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
 
 
     # Use the classifier to segment word toks into sentences
-    def classify_sentences(self,words):
+    def __classify_sentences(self, words):
         start = 0
         sents = []
         for i in range(len(words)):
-            if words[i] in '.?!' and self.classifier.classify(self.punctuation_features(words,i)) == True:
+            if words[i] in '.?!' and self.classifier.classify(self.__punctuation_features(words,i)) == True:
                 sents.append(words[start:i+1])
                 start = i+1
         if start < len(words):
@@ -76,7 +97,7 @@ class SentenceTokenizer():
 
 
     # Segment text into sentences and words
-    def segment_text(self, text):
+    def text2sents(self, text):
 
         # turn whitespace characters into spaces: split() runs on whitespace then merge words back with spaces
         text = ' '.join(text.split())
@@ -88,7 +109,7 @@ class SentenceTokenizer():
 
         # Create list of sentences using the classifier, then iterate through words in a sentence to collapse abbreviations into single words
         sentences = []
-        for sent in self.classify_sentences(toks):
+        for sent in self.__classify_sentences(toks):
             sentence = []
             i = 0
             tok = ""
@@ -124,15 +145,23 @@ class SentenceTokenizer():
 
 
 # -- MULTI WORD EXPRESSIONS TOKENIZER ------------------------------------
-# using dictionaries found at mwe.stanford.edu/resources
+
+'''
+using dictionaries found at mwe.stanford.edu/resources
+
+The API consists of:
+words2mwes(words):
+    gets a list of words in string format and classifies them where necessary into expressions
+    input:   a list of words in unicode/string format
+    returns: a list of tokens in unicode/string format, either single words or expressions
+'''
 
 class SharoffMWETokenizer():
-
     # Helper function to generate the n-grams using chi-square test from the treebank
     # ngram is a function: nltk.bigram or nltk.trigram
     # AssocMeasures is a class: BigramAssocMeasures or TrigramAssocMeasures
     # CollocationFinder is a class: BigramCollocationFinder or TrigramCollocationFinder
-    def get_ngrams(self, training_sents, ngram, AssocMeasures, CollocationFinder):
+    def __get_ngrams(self, training_sents, ngram, AssocMeasures, CollocationFinder):
         # to create sets of examples we use the bigrams we find in the training sentences
         ngrams = list(map(ngram, training_sents))
         ngrams = list(map(list, ngrams)) # unwrap ngrams generator objects
@@ -142,16 +171,15 @@ class SharoffMWETokenizer():
             nltk.corpus.treebank_raw.words(),
             window_size = 20)
         # a list of collocation generator objects to be identified based on chi-square test
-        print('hello')
         found = list(map(lambda x: finder.above_score(ngram_measures.raw_freq, 1.0 / x), map(len, tuple(ngrams)))) 
-        found2 =  reduce(add, map(list, found2)) # reduce it to the final list of collocation (warning: slow)
+        found =  reduce(add, map(list, found)) # reduce it to the final list of collocation (warning: slow)
    
         return (ngrams, found)
  
 
     # sharoff dictionary consists of expressions and their statistical collocation measures
     # the feature extractor below grabs these features from the dictionary 
-    def Sharoff_features(self, expr):
+    def __Sharoff_features(self, expr):
         return {
             'expr': expr,
             'T-score':  self.SharoffDict[expr]['T']  or 0,
@@ -167,6 +195,8 @@ class SharoffMWETokenizer():
     # targets whether they are in the set of bigram collocations in treebank corpus
     # generated with the Chi-square test provided by nltk's AssocMeasures()
     def __init__(self):
+        print(str(datetime.now()) + ": Training decision tree classifier for the multi word expression tokenizer based on Sharoff's dictionary on the Treebank corpus...")
+
         # get the Sharoff dictionary
         f = open("../dictionaries/sharoff.json", 'r+')
         self.SharoffDict = json.load(f)
@@ -181,27 +211,29 @@ class SharoffMWETokenizer():
         toks = reduce(add, training_sents) # merge all sentences into one text of tokenized words
 
         # get all bigrams and trigrams in training_sents and all statistical bigram and trigram collocations found in treebank
-        (bigrams, foundbigrams)   = self.get_ngrams(training_sents, nltk.bigrams,  BigramAssocMeasures,  BigramCollocationFinder) 
-        (trigrams, foundtrigrams) = self.get_ngrams(training_sents, nltk.trigrams, TrigramAssocMeasures, TrigramCollocationFinder) 
+        (bigrams, foundbigrams)   = self.__get_ngrams(training_sents, nltk.bigrams,  BigramAssocMeasures,  BigramCollocationFinder) 
+        (trigrams, foundtrigrams) = self.__get_ngrams(training_sents, nltk.trigrams, TrigramAssocMeasures, TrigramCollocationFinder) 
 
         # Create training examples with sharoff features, for each ngram in the dictionary
-        examples = [(self.Sharoff_features(expr), expr in foundbigrams) #or expr in foundtrigrams)
+        examples = [(self.__Sharoff_features(expr), expr in foundbigrams) #or expr in foundtrigrams)
                        for expr in bigrams #or expr in trigrams
                        if expr in self.SharoffDict.keys()]
  
         #  classifier for training with the Treebank corpus
         size = int(len(examples)*0.2)
         train_set, test_set = examples[size:], examples[:size] 
-        self.classifier = nltk.NaiveBayesClassifier.train(train_set)
-        print(nltk.classify.accuracy(self.classifier, test_set))
+        self.classifier = nltk.DecisionTreeClassifier.train(train_set)
  
+        print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
+
+
 
     # Use the classifier defined above to segment word toks into MWEs 
-    def classify_mwe(self,words):
+    def words2mwes(self, words):
         start = 0
         toks = []
         for ngram in list(nltk.bigrams(words)) + list(nltk.trigrams(words)):
-            if self.classifier.classify(self.Sharoff_features(ngram)) == True:
+            if self.classifier.classify(self.__Sharoff_features(ngram)) == True:
                 sents.append(words[start:i+1])
                 start = i+1
         if start < len(words):
@@ -212,7 +244,16 @@ class SharoffMWETokenizer():
 
 
 # -- MULTI WORD EXPRESSIONS TOKENIZER -----------------------------------------
-# using dictionaries found at mwe.stanford.edu/resources
+
+'''
+using dictionaries found at mwe.stanford.edu/resources
+
+The API consists of:
+words2mwes(words):
+    gets a list of words in string format and classifies them where necessary into expressions
+    input:   a list of words in unicode/string format
+    returns: a list of tokens in unicode/string format, either single words or expressions
+'''
 
 class McCarthyMWETokenizer(MWETokenizer):
     # this chunker is static and uses a list of 116 frequent phrases found by McCarthy
@@ -224,24 +265,39 @@ class McCarthyMWETokenizer(MWETokenizer):
         self.McCarthyDict = json.load(f)
         f.close()
 
-        self.tokenizer = MWETokenizer()
+        self.__tokenizer = MWETokenizer()
         for key in self.McCarthyDict.keys():
-            self.tokenizer.add_mwe(nltk.word_tokenize(key))
+            self.__tokenizer.add_mwe(nltk.word_tokenize(key))
+
+
+    # use the tokenizer to segment words into MWEs. Default behaviour of MWE tokenizer
+    # adds an underscore between MWE words thus this function removes it
+    def words2mwes(self, words):
+        toks = [tok.replace('_', ' ') for tok in self.__tokenizer.tokenize(words)]
+        return toks
 
 
 
 
-# -- PHRASE CHUNKER -----------------------------------------------------------
-# splits sentences in noun and verb phrases and other sentence structures
+# -- CHUNK PARSER -----------------------------------------------------------
+'''
+splits sentences in noun and verb phrases and other sentence structures
 
-class SentenceChunker():
+The API consists of:
+text2chunks(text):
+    gets a text in string/unicode format and classifies to sentences split in chunks 
+    input:   a text in unicode/string format
+    returns: a list of chunk trees representing the phrasal chunks of each sentence in the text 
+'''
+
+class ChunkParser():
     def __init__(self):
         self.chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
         self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
-    def chunk_parse(self, raw_text):
+    def text2chunks(self, text):
         sent_tok = SentenceTokenizer()
-        tokenized_sentences = sent_tok.segment_text(raw_text)
+        tokenized_sentences = sent_tok.text2sents(text)
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
         # TODO: train chunker on brown if that's the case
         # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
