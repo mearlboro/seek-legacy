@@ -237,15 +237,17 @@ class SharoffMWETokenizer():
             toks.append(words[start:])
         return toks
 
-# chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
-# # tagger = nltk.data.load("taggers/treebank_aubt.pickle")
-# tagger = nltk.data.load("taggers/brown_aubt.pickle")
-# sent_tok = SentenceTokenizer()
-# #
-# for filename in glob.glob(os.path.join(sys.argv[1], '*.txt')):
-#     f = open(filename, 'r+')
-#     raw_text = f.read()
-#     tokra = sent_tok.segment_text(raw_text)
-#     tagged_tokra = list(map(nltk.pos_tag, tokra))
-#     tokra_chunks = list(map(chunker.parse, tagged_tokra))
-#     print(tokra_chunks[0])
+class SentenceChunker():
+    def __init__(self):
+        self.chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
+        self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
+
+    def chunk_parse(self, raw_text):
+        sent_tok = SentenceTokenizer()
+        tokenized_sentences = sent_tok.segment_text(raw_text)
+        # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
+        # TODO: train chunker on brown if that's the case
+        # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
+        tagged_sentences = list(map(nltk.pos_tag, tokenized_sentences))
+        chunked_sentences = list(map(self.chunker.parse, tagged_sentences))
+        print(chunked_sentences[0])
