@@ -4,6 +4,7 @@ import os
 import glob
 import string
 import json
+import regex as re
 from datetime import datetime
 from functools import reduce
 from operator import add
@@ -325,19 +326,30 @@ class NameEntityDetector():
 
     def text2ne(self, input_text):
         chunked_sents = self.chunker.text2chunks(input_text)
-        named_entities = dict(self.stanford_tagger.tag(input_text.split()))
+        named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
         # Create a list to store the final mapping of NEs
         answered = []
         for chunked_sent in chunked_sents:
+            # print(chunked_sent)
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
             for subtree in filtered_chunked_subtrees:
+                category = None
                 ent_key = ""
                 for leaf in subtree.leaves()[:-1]:
-                    ent_key += leaf[0] + " "
-                ent_key += subtree.leaves()[-1][0]
+                    if (leaf[0] in named_entities):
+                        ent_key += leaf[0] + " "
+                        category = named_entities[leaf[0]]
                 if (subtree.leaves()[-1][0] in named_entities):
-                    category = named_entities[subtree.leaves()[-1][0]]
-                else:
+                    ent_key += subtree.leaves()[-1][0]
+                    if (category is None):
+                        category = named_entities[subtree.leaves()[-1][0]]
+                if(category is None):
                     category = 'O'
                 answered += (ent_key, category)
         return answered
+
+ned = NameEntityDetector()
+
+f = open(sys.argv[1])
+input_text = f.read()
+print(ned.text2ne(input_text))
