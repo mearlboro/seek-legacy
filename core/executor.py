@@ -11,7 +11,8 @@ from bs4 import BeautifulSoup
 
 def transfer_file(filename):
     os.system('scp %s $IC_USERNAME@shell1.doc.ic.ac.uk:~' % filename)
-    os.system("ssh -n $IC_USERNAME@shell1.doc.ic.ac.uk 'scp %s $IC_USERNAME@cloud-vm-45-110.doc.ic.ac.uk:/develop/Seek/raw/txt && rm %s' " % (filename, filename))
+    # TODO: BUG FIX, deal with different path but same filename
+    os.system("ssh -n $IC_USERNAME@shell1.doc.ic.ac.uk 'scp %s $IC_USERNAME@cloud-vm-45-110.doc.ic.ac.uk:/develop/Seek/raw/txt' " % filename)
 
 # -----------------------------------------------------------------------------
 # SEEK UPLOAD <SRC>

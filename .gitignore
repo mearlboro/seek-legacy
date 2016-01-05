@@ -3,7 +3,10 @@
 /Herox ßtuff
 /text/*
 /raw/*
-
+/text-normalization
+/nltk-trainer
+/core/*.txt
+/core/__pycache__/
 # seek environment should be recreated at every pull
 /seek-env/
 
