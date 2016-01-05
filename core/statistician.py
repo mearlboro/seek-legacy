@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 import os
 import string
@@ -19,7 +20,6 @@ from nltk.tokenize import MWETokenizer
 import gensim
 from gensim.corpora import WikiCorpus, wikicorpus
 
-
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 '''
 "NLP with Python" book, chapter 6.2
@@ -27,7 +27,7 @@ from gensim.corpora import WikiCorpus, wikicorpus
 The sentence tokenizer uses a custom regex tokenizer to split a given text into words,
 punctuation, and spaces (WordPunctSpaceTokenizer).
 Having the tokens as described above, it uses the punctuation_features feature extractor
-for identifying features that would help identify whether at that specific token, given 
+for identifying features that would help identify whether at that specific token, given
 that it is a punctuation mark from the set ".!?", a sentence ends and another starts.
 The classifier based on these features is trained on the NLTK Treebank corpus of already
 tokenized sentences.
@@ -174,14 +174,14 @@ class SharoffMWETokenizer():
             nltk.corpus.treebank_raw.words(),
             window_size = 20)
         # a list of collocation generator objects to be identified based on chi-square test
-        found = list(map(lambda x: finder.above_score(ngram_measures.raw_freq, 1.0 / x), map(len, tuple(ngrams)))) 
+        found = list(map(lambda x: finder.above_score(ngram_measures.raw_freq, 1.0 / x), map(len, tuple(ngrams))))
         found =  reduce(add, map(list, found)) # reduce it to the final list of collocation (warning: slow)
-   
+
         return (ngrams, found)
- 
+
 
     # sharoff dictionary consists of expressions and their statistical collocation measures
-    # the feature extractor below grabs these features from the dictionary 
+    # the feature extractor below grabs these features from the dictionary
     def __Sharoff_features(self, expr):
         return {
             'expr': expr,
@@ -191,10 +191,10 @@ class SharoffMWETokenizer():
             'number-of-words': len(expr)
         }
 
- 
+
     # To train the classifier we use the Sharoff features on bigrams found in treebank
     # and also in the Sharoff Dictionary.
-    # To create training examples, we use the features of bigrams above and for the 
+    # To create training examples, we use the features of bigrams above and for the
     # targets whether they are in the set of bigram collocations in treebank corpus
     # generated with the Chi-square test provided by nltk's AssocMeasures()
     def __init__(self):
@@ -206,32 +206,32 @@ class SharoffMWETokenizer():
         f.close()
 
         # get the traininf corpus: join the treebank sentence corpus into a text
-        # and filter out START tag and punctuation 
+        # and filter out START tag and punctuation
         training_sents = [list(filter(lambda w: w not in ['START'] and w not in string.punctuation, sent))
                           for sent in nltk.corpus.treebank_raw.sents()]
         # filter out empty or 1-word sentences
-        training_sents = list(filter(lambda s: len(s) > 1, training_sents)) 
+        training_sents = list(filter(lambda s: len(s) > 1, training_sents))
         toks = reduce(add, training_sents) # merge all sentences into one text of tokenized words
 
         # get all bigrams and trigrams in training_sents and all statistical bigram and trigram collocations found in treebank
-        (bigrams, foundbigrams)   = self.__get_ngrams(training_sents, nltk.bigrams,  BigramAssocMeasures,  BigramCollocationFinder) 
-        (trigrams, foundtrigrams) = self.__get_ngrams(training_sents, nltk.trigrams, TrigramAssocMeasures, TrigramCollocationFinder) 
+        (bigrams, foundbigrams)   = self.__get_ngrams(training_sents, nltk.bigrams,  BigramAssocMeasures,  BigramCollocationFinder)
+        (trigrams, foundtrigrams) = self.__get_ngrams(training_sents, nltk.trigrams, TrigramAssocMeasures, TrigramCollocationFinder)
 
         # Create training examples with sharoff features, for each ngram in the dictionary
         examples = [(self.__Sharoff_features(expr), expr in foundbigrams) #or expr in foundtrigrams)
                        for expr in bigrams #or expr in trigrams
                        if expr in self.SharoffDict.keys()]
- 
+
         #  classifier for training with the Treebank corpus
         size = int(len(examples)*0.2)
-        train_set, test_set = examples[size:], examples[:size] 
+        train_set, test_set = examples[size:], examples[:size]
         self.classifier = nltk.DecisionTreeClassifier.train(train_set)
- 
+
         print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
 
 
 
-    # Use the classifier defined above to segment word toks into MWEs 
+    # Use the classifier defined above to segment word toks into MWEs
     def words2mwes(self, words):
         start = 0
         toks = []
@@ -242,7 +242,7 @@ class SharoffMWETokenizer():
         if start < len(words):
             toks.append(words[start:])
         return toks
- 
+
 
 
 
@@ -288,9 +288,9 @@ splits sentences in noun and verb phrases and other sentence structures
 
 The API consists of:
 text2chunks(text):
-    gets a text in string/unicode format and classifies to sentences split in chunks 
+    gets a text in string/unicode format and classifies to sentences split in chunks
     input:   a text in unicode/string format
-    returns: a list of chunk trees representing the phrasal chunks of each sentence in the text 
+    returns: a list of chunk trees representing the phrasal chunks of each sentence in the text
 '''
 
 class ChunkParser():
@@ -306,7 +306,8 @@ class ChunkParser():
         # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
         tagged_sentences = list(map(nltk.pos_tag, tokenized_sentences))
         chunked_sentences = list(map(self.chunker.parse, tagged_sentences))
-        print(chunked_sentences[0])
+        return chunked_sentences
+
 
 
 
@@ -347,5 +348,43 @@ class TopicModelling():
         pairs = [topic.split('*') for topic in topics]
         pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
         return dict(pairs)
+
+
+
+# -- NAME ENTITY DETECTOR ---------------------------------------------------
+'''
+extracts named entities from an input text
+
+The API consists of:
+text2ne(text):
+    gets a text in string/unicode format and extracts named entities by mapping them
+    against the chunked sentences of the text and grouping them based on NP chunks
+    input:   a text in unicode/string format
+    returns: a list of tuples of the format (NE, TYPE)
+'''
+
+class NameEntityDetector():
+    def __init__(self):
+        self.chunker = ChunkParser()
+        self.stanford_tagger = nltk.tag.StanfordNERTagger('english.all.3class.distsim.crf.ser.gz')
+
+    def text2ne(self, input_text):
+        chunked_sents = self.chunker.text2chunks(input_text)
+        named_entities = dict(self.stanford_tagger.tag(input_text.split()))
+        # Create a list to store the final mapping of NEs
+        answered = []
+        for chunked_sent in chunked_sents:
+            filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
+            for subtree in filtered_chunked_subtrees:
+                ent_key = ""
+                for leaf in subtree.leaves()[:-1]:
+                    ent_key += leaf[0] + " "
+                ent_key += subtree.leaves()[-1][0]
+                if (subtree.leaves()[-1][0] in named_entities):
+                    category = named_entities[subtree.leaves()[-1][0]]
+                else:
+                    category = 'O'
+                answered += (ent_key, category)
+        return answered
 
 
