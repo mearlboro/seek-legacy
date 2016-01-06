@@ -320,8 +320,8 @@ class TopicModelling():
 
         # load the corpus of documents in the wikipedia archive and save parsed files to disk
         self.wiki_corpus = WikiCorpus(wiki_src)
-        self.wiki_dictionary = wiki_corpus.dictionary
-        wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
+        self.wiki_dictionary = self.wiki_corpus.dictionary
+        self.wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
         MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm")
       
         
@@ -390,11 +390,15 @@ class NameEntityDetector():
                         category = named_entities[subtree.leaves()[-1][0]]
                 if(category is None):
                     category = 'O'
-                answered += (ent_key, category)
-        return answered
+                answered += [(ent_key, category)]
+        return set(filter(lambda x: x[1] != 'O', answered))
 
-# ned = NameEntityDetector()
-# 
-# f = open(sys.argv[1])
-# input_text = f.read()
-# print(ned.text2ne(input_text))
+    def text2unine(self, input_text):
+        named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
+        return named_entities 
+
+ned = NameEntityDetector()
+
+f = open(sys.argv[1])
+input_text = f.read()
+print(ned.text2ne(input_text))
