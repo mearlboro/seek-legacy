@@ -1,4 +1,3 @@
-import numpy
 import nltk
 import gensim
 import os
