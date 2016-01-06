@@ -319,7 +319,7 @@ class TopicModelling():
         wiki_src = '../raw/wiki/enwiki-articles.xml.bz2'
 
         # load the corpus of documents in the wikipedia archive and save parsed files to disk
-        self.wiki_corpus = WikiCorpus(articles)
+        self.wiki_corpus = WikiCorpus(wiki_src)
         self.wiki_dictionary = wiki_corpus.dictionary
         wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
         MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm")
@@ -393,8 +393,8 @@ class NameEntityDetector():
                 answered += (ent_key, category)
         return answered
 
-ned = NameEntityDetector()
-
-f = open(sys.argv[1])
-input_text = f.read()
-print(ned.text2ne(input_text))
+# ned = NameEntityDetector()
+# 
+# f = open(sys.argv[1])
+# input_text = f.read()
+# print(ned.text2ne(input_text))
