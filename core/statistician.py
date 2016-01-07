@@ -409,30 +409,41 @@ class NameEntityDetector():
     def __init__(self):
         self.chunker = ChunkParser()
         self.stanford_tagger = nltk.tag.StanfordNERTagger('english.all.3class.distsim.crf.ser.gz')
+        self.name_tagger = nltk.tag.StanfordNERTagger('name-ner-model.ser.gz')
 
     def text2ne(self, input_text):
         chunked_sents = self.chunker.text2chunks(input_text)
         named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
+        person_entities = dict(self.name_tagger.tag(re.split("\,?\.?\s+", input_text)))
         # Create a list to store the final mapping of NEs
+        # print(named_entities)
         answered = []
         for chunked_sent in chunked_sents:
             # print(chunked_sent)
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
             for subtree in filtered_chunked_subtrees:
-                category = None
+                stanford_category = None
+                person_category = None
                 ent_key = ""
                 for leaf in subtree.leaves()[:-1]:
                     if (leaf[0] in named_entities):
                         ent_key += leaf[0] + " "
-                        category = named_entities[leaf[0]]
+                        stanford_category = named_entities[leaf[0]]
+                        person_category = person_entities[leaf[0]]
                 if (subtree.leaves()[-1][0] in named_entities):
                     ent_key += subtree.leaves()[-1][0]
-                    if (category is None):
-                        category = named_entities[subtree.leaves()[-1][0]]
-                if(category is None):
-                    category = 'O'
-                answered += [(ent_key, category)]
+                    stanford_category = named_entities[subtree.leaves()[-1][0]]
+                    person_category = person_entities[subtree.leaves()[-1][0]]
+                if (stanford_category is None):
+                    stanford_category = 'O'
+                if (person_category is None):
+                    person_category = 'O'
+                if (stanford_category != 'O'):
+                    answered.append((ent_key, stanford_category))
+                else:
+                    answered.append((ent_key, person_category))
         return set(filter(lambda x: x[1] != 'O', answered))
+        # return answered
 
     def text2unine(self, input_text):
         named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
