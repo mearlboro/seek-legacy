@@ -148,6 +148,44 @@ class SentenceTokenizer():
 
 
 
+# -- COLLOCATION DETECTOR ------------------------------------------------
+
+'''
+The API consists of:
+words2collocated(words):
+    gets a list of words in string format and classifies them where necessary into expressions
+    input:   a list of words in unicode/string format
+    returns: a list of tokens in unicode/string format, either single words or collocations
+'''
+
+class Collocator():
+    def __init__(self):
+        self.bigram_measures  = BigramAssocMeasures()
+        self.trigram_measures = TrigramAssocMeasures()   
+
+
+    # Takes a list of words and returns a list of tuples as collocation
+    def words2collocations(self, words):
+        self.bigram_finder  = BigramCollocationFinder.from_words(words, window_size = 20) 
+        self.trigram_finder = TrigramCollocationFinder.from_words(words, window_size = 20)
+
+        l = int(len(words)/50)
+
+        return self.bigram_finder.nbest(self.bigram_measures.pmi, l) + self.trigram_finder.nbest(self.bigram_measures.pmi, l)
+        
+
+    # Takes a list of words and returns a list of tokens either words or collocations
+    def words2collocated(self, words):
+        start = 0
+        toks = []
+        for ngram in self.words2collocations(words): 
+             toks.append(words[start:i+1])
+             start = i+1
+        if start < len(words):
+            toks.append(words[start:])
+        return toks
+        
+
 
 # -- MULTI WORD EXPRESSIONS TOKENIZER ------------------------------------
 
@@ -180,7 +218,7 @@ class SharoffMWETokenizer():
         ignored_words = nltk.corpus.stopwords.words('english')
         finder.apply_word_filter(lambda w: w.lower() in ignored_words)
 
-        found = finder.nbest(nltk.collocations.BigramAssocMeasures.pmi, int(len(corpus)/50))
+        found = finder.nbest(nltk.collocations.AssocMeasures.pmi, int(len(corpus)/50))
         return (ngrams, finder)
 
 
@@ -241,7 +279,7 @@ class SharoffMWETokenizer():
         toks = []
         for ngram in list(nltk.bigrams(words)) + list(nltk.trigrams(words)):
             if self.classifier.classify(self.__Sharoff_features(ngram)) == True:
-                sents.append(words[start:i+1])
+                toks.append(words[start:i+1])
                 start = i+1
         if start < len(words):
             toks.append(words[start:])
