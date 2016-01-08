@@ -24,13 +24,17 @@ from datetime import datetime
 from statistician import SentenceTokenizer
 from statistician import McCarthyMWETokenizer
 from statistician import SharoffMWETokenizer
-from statistician import ChunkParser 
+from statistician import Collocator
+from statistician import ChunkParser
+from statistician import NameEntityDetector
+from statistician import TopicModelling
+from statistician import QuestionClassifier
 
 sent_tok = SentenceTokenizer()
 with open('skills/init_sent_tok.pkl', 'wb') as output:
     pickler = pickle.Pickler(output, -1)
     pickler.dump(sent_tok)
-print(" √ " + str(datetime.now()) + ": Created sentence tokenizer.")
+print(" √ " + str(datetime.now()) + ": Created trained sentence tokenizer.")
 del sent_tok
 
 mwe_dict_tok = McCarthyMWETokenizer()
@@ -51,7 +55,28 @@ chunker = ChunkParser()
 with open('skills/init_chunk.pkl', 'wb') as output:
     pickler = pickle.Pickler(output, -1)
     pickler.dump(chunker)
-print(" √ " + str(datetime.now()) + ": Created multi word expression tokenizer with Sharoff dictionary.")
+print(" √ " + str(datetime.now()) + ": Created trained chunker.")
 del chunker
+
+ner = NameEntityDetector()
+with open('skills/init_ner.pkl', 'wb') as output:
+    pickler = pickle.Pickler(output, -1)
+    pickler.dump(ner)
+print(" √ " + str(datetime.now()) + ": Created trained named entity recognizer.")
+del ner
+
+tm = TopicModelling()
+with open('skills/init_topics.pkl', 'wb') as output:
+    pickler = pickle.Pickler(output, -1)
+    pickler.dump(tm)
+print(" √ " + str(datetime.now()) + ": Created trained topic model on the Wikipedia Corpus.")
+del tm 
+
+qc = QuestionClassifier()
+with open('skills/init_topics.pkl', 'wb') as output:
+    pickler = pickle.Pickler(output, -1)
+    pickler.dump(qc)
+print(" √ " + str(datetime.now()) + ": Created trained question classifier on the QC Corpus.")
+del qc
 
 
