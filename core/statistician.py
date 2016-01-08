@@ -468,6 +468,7 @@ class NameEntityDetector():
 
 # lda_topics = extracttopicsupdate(sys.argv[1], [0, 50])
 # print(lda_topics)
+ned = NameEntityDetector()
 f = open(sys.argv[1])
 input_text = f.read()
 sent_freqs = filefreqsentences(sys.argv[1])
@@ -497,3 +498,80 @@ print("FOCUSED: \n")
 print(set(focused_named_entities))
 print("CLEARER: \n")
 print(set(clearer_named_entities))
+
+
+
+# -- QUESTION CLASSIFIER --------------------------------------------------
+'''
+Using a modified version of the question classifier in nltk_data/corpora/qc
+
+The classifier below tags a question with a semantic tag based on a set of 
+features: the presence of various words in the question's text, like any wh
+word, the position of a question mark, the use of named entities and their
+category etc. 
+It is trained with a modified version of the qc corpus, stored as dictionar
+in ../corpora/, where each question is mapped to a tuple representing its
+class and subclass
+
+The API consists of:
+classify(question):
+    gets the text of the question in string format, splits it into tokens, then classifies it accordingly 
+    input:   a text in unicode/string format
+    returns: a tuple representing the class and subclass 
+
+'''
+
+class QuestionClassifier():
+    # extract question features from token list 
+    def __question_features(self, toks):
+        utoks = [w.lower() for w in toks]
+        udict = dict(enumerate(utoks))
+
+        whlist = ['who', 'what', 'where', 'when', 'why']
+        #nes    = self.ner.text2ne()
+
+        return {
+            'is-who'  : 'who'   in udict or 'name'  in udict,
+            'is-what' : 'what'  in udict or 'which' in udict,
+            'is-where': 'where' in udict,
+            'is-when' : 'when'  in udict or 'year'  in udict or 'time' in udict,
+            'is-why'  : 'why'   in udict,
+            'is-how'  : 'how'   in udict,
+            'question-mark' : '?' in udict and any(map(lambda x: x in dict.values() and list.index(x) < list.index('?'), whlist)),
+            'pers-ne' : any(map(lambda x: x[1] == 'PERSON',        nes)),
+            'loc-ne'  : any(map(lambda x: x[1] == 'LOCATION' ,     nes)),
+            'org-ne'  : any(map(lambda x: x[1] == 'ORGANIZATION' , nes)),
+            'time-ne' : any(map(lambda x: x[1] == 'TIME',          nes)),
+            ## 'num'     : Todo: with regex
+        }
+
+    # Builds the classifier
+    def __init__(self):
+        print(str(datetime.now()) + ": Training question classifier with decision tree on modified QC corpus...")
+
+        # use the NER to find NEs in questions and classify them by these features 
+        self.ner = NameEntityDetector()
+
+        # get the question corpus into a set of tuples
+        f = open("../corpora/qc.json", 'r+')
+        taining_qs = json.load(f)
+        f.close()
+
+        # Create training features by calling question_features on each tokenised question 
+        featuresets = [(self.__question_features(nltk.word_tokenize(q[0])), q[1])
+                       for q in training_qs.items()]
+
+        # Decision Tree classifier for training with the Treebank corpus
+        size = int(len(featuresets)*0.2)
+        train_set, test_set = featuresets[size:], featuresets[:size]
+        self.classifier = nltk.DecisionTreeClassifier.train(train_set)
+
+        print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
+
+
+    # Classify questions 
+    def classify(self, question):
+        toks = nltk.word_tokenize(question)
+        return self.classifier.classify(toks)
+
+
