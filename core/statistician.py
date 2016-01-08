@@ -413,7 +413,7 @@ class NameEntityDetector():
     def __init__(self):
         self.chunker = ChunkParser()
         self.stanford_tagger = nltk.tag.StanfordNERTagger('english.all.3class.distsim.crf.ser.gz')
-        self.name_tagger = nltk.tag.StanfordNERTagger('name-ner-model.ser.gz')
+        self.name_tagger = nltk.tag.StanfordNERTagger('seek-model.ser.gz')
 
     def text2ne(self, input_text):
         chunked_sents = self.chunker.text2chunks(input_text)
@@ -475,6 +475,7 @@ class NameEntityDetector():
                     relevant_named_entities.append(cne)
         return (set(focused_named_entities), set(relevant_named_entities))
 
+'''
 # lda_topics = extracttopicsupdate(sys.argv[1], [0, 50])
 # print(lda_topics)
 ned = NameEntityDetector()
@@ -491,6 +492,8 @@ print("Focused named entities: \n")
 print(fne)
 print("Relevant named entities: \n")
 print(rne)
+'''
+
 
 # -- QUESTION CLASSIFIER --------------------------------------------------
 '''
@@ -514,21 +517,22 @@ classify(question):
 
 class QuestionClassifier():
     # extract question features from token list
-    def __question_features(self, toks):
+    def __question_features(self, toks, nes):
         utoks = [w.lower() for w in toks]
-        udict = dict(enumerate(utoks))
+        udict = dict(enumerate(utoks)).values()
 
         whlist = ['who', 'what', 'where', 'when', 'why']
-        #nes    = self.ner.text2ne()
 
         return {
+
             'is-who'  : 'who'   in udict or 'name'  in udict,
             'is-what' : 'what'  in udict or 'which' in udict,
             'is-where': 'where' in udict,
             'is-when' : 'when'  in udict or 'year'  in udict or 'time' in udict,
             'is-why'  : 'why'   in udict,
             'is-how'  : 'how'   in udict,
-            'question-mark' : '?' in udict and any(map(lambda x: x in dict.values() and list.index(x) < list.index('?'), whlist)),
+            'question-mark'      : '?' in udict,
+            'question-mark-word' : '?' in udict and any(map(lambda x: x in udict and utoks.index(x) < utoks.index('?') or False, whlist)),
             'pers-ne' : any(map(lambda x: x[1] == 'PERSON',        nes)),
             'loc-ne'  : any(map(lambda x: x[1] == 'LOCATION' ,     nes)),
             'org-ne'  : any(map(lambda x: x[1] == 'ORGANIZATION' , nes)),
@@ -540,16 +544,13 @@ class QuestionClassifier():
     def __init__(self):
         print(str(datetime.now()) + ": Training question classifier with decision tree on modified QC corpus...")
 
-        # use the NER to find NEs in questions and classify them by these features
-        self.ner = NameEntityDetector()
-
         # get the question corpus into a set of tuples
         f = open("../corpora/qc.json", 'r+')
-        taining_qs = json.load(f)
+        training_qs = json.load(f)
         f.close()
 
         # Create training features by calling question_features on each tokenised question
-        featuresets = [(self.__question_features(nltk.word_tokenize(q[0])), q[1])
+        featuresets = [(self.__question_features(q[1][0], q[1][1]), ' '.join(q[1][2]))
                        for q in training_qs.items()]
 
         # Decision Tree classifier for training with the Treebank corpus
@@ -561,6 +562,5 @@ class QuestionClassifier():
 
 
     # Classify questions
-    def classify(self, question):
-        toks = nltk.word_tokenize(question)
-        return self.classifier.classify(toks)
+    def classify(self, toks, nes):
+        return self.classifier.classify(toks, nes)
