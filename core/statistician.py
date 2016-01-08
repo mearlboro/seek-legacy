@@ -9,7 +9,10 @@ import regex as re
 from datetime import datetime
 from functools import reduce
 from operator import add
-
+from linguist import extracttopicsinitial
+from linguist import getfreqsentences
+from linguist import extracttopicsupdate
+from linguist import filefreqsentences
 import nltk
 import nltk.chunk
 import nltk.data
@@ -323,8 +326,8 @@ class TopicModelling():
         self.wiki_dictionary = wiki_corpus.dictionary
         wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
         MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm")
-      
-        
+
+
     # extract topics with lda
     # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
     # num:      number of topics to extract
@@ -374,25 +377,38 @@ class NameEntityDetector():
         chunked_sents = self.chunker.text2chunks(input_text)
         named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
         person_entities = dict(self.name_tagger.tag(re.split("\,?\.?\s+", input_text)))
+        # filtered_named_entities = dict((k, v) for k, v in named_entities.items() if v != 'O')
+        # return filtered_named_entities
         # Create a list to store the final mapping of NEs
         # print(named_entities)
         answered = []
         for chunked_sent in chunked_sents:
             # print(chunked_sent)
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
+
             for subtree in filtered_chunked_subtrees:
                 stanford_category = None
                 person_category = None
                 ent_key = ""
+                # ent_key = ' '.join(list(map(lambda t: t[0] + " ", subtree.leaves())))
+                # print(ent_key)
+                tags = nltk.FreqDist(list(map(lambda x: x[1], subtree.leaves()[:-1])))
+                most_common_tag = None
+                if(len(tags) > 0):
+                    most_common_tag = tags.max()
+
                 for leaf in subtree.leaves()[:-1]:
                     if (leaf[0] in named_entities):
                         ent_key += leaf[0] + " "
+                        # if (leaf[1] == 'NNP'):
                         stanford_category = named_entities[leaf[0]]
                         person_category = person_entities[leaf[0]]
-                if (subtree.leaves()[-1][0] in named_entities):
-                    ent_key += subtree.leaves()[-1][0]
-                    stanford_category = named_entities[subtree.leaves()[-1][0]]
-                    person_category = person_entities[subtree.leaves()[-1][0]]
+                last_leaf = subtree.leaves()[-1]
+                if (last_leaf[0] in named_entities):
+                    if (most_common_tag != None or last_leaf[1] == most_common_tag):
+                        ent_key += last_leaf[0]
+                        stanford_category = named_entities[subtree.leaves()[-1][0]]
+                        person_category = person_entities[subtree.leaves()[-1][0]]
                 if (stanford_category is None):
                     stanford_category = 'O'
                 if (person_category is None):
@@ -406,6 +422,34 @@ class NameEntityDetector():
 
 ned = NameEntityDetector()
 
+# lda_topics = extracttopicsupdate(sys.argv[1], [0, 50])
+# print(lda_topics)
 f = open(sys.argv[1])
 input_text = f.read()
-print(ned.text2ne(input_text))
+sent_freqs = filefreqsentences(sys.argv[1])
+# print(sent_freqs)
+named_entities = ned.text2ne(input_text)
+# print(named_entities)
+# print(lda_topics)
+clearer_named_entities = []
+focused_named_entities = []
+for named_entity in named_entities:
+    for sent_freq in sent_freqs:
+        if (any(word in named_entity[0] for word in sent_freq[0])):
+            clearer_named_entities.append(named_entity)
+        if (named_entity[0] in sent_freq[0]):
+            focused_named_entities.append(named_entity)
+#     for (k, v) in lda_topics.items():
+#         if (k in named_entity[0] and v > 0.09):
+relevant_named_entities = []
+for ne in set(focused_named_entities):
+    for cne in clearer_named_entities:
+        if (ne[0] in cne[0]):
+            relevant_named_entities.append(cne)
+
+print("RELEVANT: \n")
+print(set(relevant_named_entities))
+print("FOCUSED: \n")
+print(set(focused_named_entities))
+print("CLEARER: \n")
+print(set(clearer_named_entities))
