@@ -32,9 +32,9 @@ cd $NLTK_DATA
 
 # One time install run for stanford
 # wget http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip
-curl http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip > stanford-ner.zip
-unzip stanford-ner.zip -d stanford-ner
-rm -f stanford-ner.zip
+# curl http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip > stanford-ner.zip
+# unzip stanford-ner.zip -d stanford-ner
+# rm -f stanford-ner.zip
 
 export CLASSPATH="$NLTK_DATA/stanford-ner/stanford-ner.jar"
 export STANFORD_MODELS="$NLTK_DATA/stanford-ner/classifiers"
