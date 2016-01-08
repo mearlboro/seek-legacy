@@ -18,8 +18,7 @@ from nltk.collocations import *
 from nltk.collocations import BigramAssocMeasures
 from nltk.collocations import TrigramAssocMeasures
 from nltk.tokenize import MWETokenizer
-import gensim
-from gensim.corpora import WikiCorpus, wikicorpus
+from gensim.corpora import WikiCorpus, wikicorpus, TextCorpus, MmCorpus
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 '''
@@ -316,15 +315,18 @@ class ChunkParser():
 
 class TopicModelling():
     def __init__(self):
+        print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")
         wiki_src = '../raw/wiki/enwiki-articles.xml.bz2'
 
         # load the corpus of documents in the wikipedia archive and save parsed files to disk
-        self.wiki_corpus = WikiCorpus(articles)
-        self.wiki_dictionary = wiki_corpus.dictionary
-        wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
-        MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm")
+        self.wiki_corpus = WikiCorpus(wiki_src)
+#        self.wiki_dictionary = self.wiki_corpus.dictionary
+#        self.wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
+        MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm", self.wiki_corpus)
       
-        
+        print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")
+       
+ 
     # extract topics with lda
     # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
     # num:      number of topics to extract
@@ -393,8 +395,8 @@ class NameEntityDetector():
                 answered += (ent_key, category)
         return answered
 
-ned = NameEntityDetector()
-
-f = open(sys.argv[1])
-input_text = f.read()
-print(ned.text2ne(input_text))
+#ned = NameEntityDetector()
+#
+#f = open(sys.argv[1])
+#input_text = f.read()
+#print(ned.text2ne(input_text))
