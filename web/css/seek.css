@@ -73,9 +73,16 @@ p {
 .container {
   width: 100%;
   max-width: 960px;
-  margin: 0 auto;
-  padding: 0 20px;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 15px;
+  padding-left: 15px;
   box-sizing: border-box;
+}
+
+.row {
+  margin-right: -15px;
+  margin-left: -15px;
 }
 
 .column,
