@@ -31,8 +31,9 @@ def getsents(filename):
     raw_text = f.read()
     sents = nltk.sent_tokenize(raw_text)    # tokenize into sentences
     sents_words = list(map(nltk.word_tokenize, sents)) # tokenize each sentence into words
-    text = list(map(nltk.Text, sents_words))
-    return text
+    # text = list(map(nltk.Text, sents_words))
+    # return text
+    return sents_words
 
 
 
@@ -137,7 +138,8 @@ def fileldatokens(filename):
     text = [w.lower() for w in getwords(filename)]
 
     (lda_text, lda_lower) = filter_stop_words(text)
-
+    global vocab
+    global freqs
     vocab = sorted(set(vocab + lda_lower))
     freq  = nltk.FreqDist(lda_lower)
     freqs = freqs + freq
@@ -160,7 +162,7 @@ def getldatokens(src, args):
         freq  = nltk.FreqDist(lda_lower)
         global freqs
         freqs = freqs + freq    # find frequencies and add to total frequency distribution
-        
+
         lda_texts += lda_text
 
     return (lda_texts, vocab, freqs)
@@ -172,8 +174,20 @@ def getldatokens(src, args):
 def filefreqsentences(filename):
     words = getwords(filename)
     sentences = getsents(filename)
-    (lda_text, vocab, wordfreqs) = filedatokens(src)
-    topics = gettopicsupdate(src,0,8)
+    num = 8
+    (lda_text, vocab, wordfreqs) = fileldatokens(filename)
+    # topics = extracttopicsupdate(filename,[0,8])
+    dictionary = corpora.Dictionary([lda_text])
+    corp = [dictionary.doc2bow(lda_text)]
+
+    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
+
+    # returns the topics as a dictionary of words and scores
+    topics = lsi_topics.print_topics(num)[0][1].split('+')
+    pairs = [topic.split('*') for topic in topics]
+    pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
+    topics = dict(pairs)
+
     sentfreqs = []
     for sent in sentences:
         sentfreqs = sentfreqs + [(sent, numpy.mean(list(map(lambda word: word in vocab and wordfreqs.get(word) or 0, sent))) + 0)]
@@ -186,7 +200,7 @@ def getfreqsentences(src, args):
     # eliminate stop words, as they are not relevant when calculating the most relevant sentences
     (lda_text, vocab, wordfreqs) = getldatokens(src, args)
     topics = extracttopicsupdate(src,[0,8])
-    print(topics) 
+    # print(topics)
     for filename in glob.glob(os.path.join(src, '*.txt')):
         words = getwords(filename)
         sentences = getsents(filename) # 2D array of sentences
@@ -197,7 +211,7 @@ def getfreqsentences(src, args):
         for sent in sentences:
             sentfreqs += [(reduce(lambda x,y: x + ' ' + y, sent),
                 numpy.mean(list(map(lambda word: word.lower() in vocab and wordfreqs.get(word) or 0, sent))) +
-                sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))  
+                sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))
             )]
 
         # sort by relevance descending
@@ -247,36 +261,36 @@ def extracttopicsinitial(src, args):
 
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
 
-    print(lda_topics.print_topics(num))
+    # print(lda_topics.print_topics(num))
     return lda_topics
 
 
 
 # -----------------------------------------------------------------------------------
-commands = {
-    'vocab': getvocab,
-    'freq': getfrequency,
-    'freqsentences': getfreqsentences,
-    'chunk': chunk,
-    'ldatokens': getldatokens,
-    'topics': gettopics,
-}
-
-if len(sys.argv) <= 2:
-    print("the linguist expects the following command \n linguist.py <command> <src>")
-    sys.exit(0)
-if len(sys.argv) > 2:
-    com  = sys.argv[1]
-    src  = sys.argv[2]
-    args = 0
-    if len(sys.argv) > 3:
-        args = int(sys.argv[3]), int(sys.argv[4])
-    if not os.path.isdir(src):
-        print("<src> is not a directory")
-        sys.exit(0)
-    print("Executing linguist " + com + " on directory " + src + " ...")
-    if commands.get(com, False):
-        print(commands[com](src, args))
-    else:
-        print("<command> can be \n vocab \n freq \n freqsentences \n ldatokens \n chunk")
-        sys.exit(0)
+# commands = {
+#     'vocab': getvocab,
+#     'freq': getfrequency,
+#     'freqsentences': getfreqsentences,
+#     'chunk': chunk,
+#     'ldatokens': getldatokens,
+#     'topics': gettopics,
+# }
+#
+# if len(sys.argv) <= 2:
+#     print("the linguist expects the following command \n linguist.py <command> <src>")
+#     sys.exit(0)
+# if len(sys.argv) > 2:
+#     com  = sys.argv[1]
+#     src  = sys.argv[2]
+#     args = 0
+#     if len(sys.argv) > 3:
+#         args = int(sys.argv[3]), int(sys.argv[4])
+#     if not os.path.isdir(src):
+#         print("<src> is not a directory")
+#         sys.exit(0)
+#     print("Executing linguist " + com + " on directory " + src + " ...")
+#     if commands.get(com, False):
+#         print(commands[com](src, args))
+#     else:
+#         print("<command> can be \n vocab \n freq \n freqsentences \n ldatokens \n chunk")
+#         sys.exit(0)
