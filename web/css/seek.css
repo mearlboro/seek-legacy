@@ -13,6 +13,7 @@
  - base styles
  - typography
  - grid
+ - spacing
 */
 
 /* Base styles (custom + via Skeleton)
@@ -175,3 +176,29 @@ ul,
 ol,
 form {
   margin-bottom: 2.5rem; }
+
+/* Utility Classes (via Materialize)
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+.hide {
+  display: none !important;
+}
+
+.left-align {
+  text-align: left;
+}
+
+.right-align {
+  text-align: right;
+}
+
+.center, .center-align {
+  text-align: center;
+}
+
+.left {
+  float: left !important;
+}
+
+.right {
+  float: right !important;
+}
