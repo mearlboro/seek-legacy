@@ -151,6 +151,45 @@ class SentenceTokenizer():
 
 
 
+# -- COLLOCATION DETECTOR ------------------------------------------------
+
+'''
+The API consists of:
+words2collocated(words):
+    gets a list of words in string format and classifies them where necessary into expressions
+    input:   a list of words in unicode/string format
+    returns: a list of tokens in unicode/string format, either single words or collocations
+'''
+
+class Collocator():
+    def __init__(self):
+        self.bigram_measures  = BigramAssocMeasures()
+        self.trigram_measures = TrigramAssocMeasures()
+
+
+    # Takes a list of words and returns a list of tuples as collocation
+    def words2collocations(self, words):
+        self.bigram_finder  = BigramCollocationFinder.from_words(words, window_size = 20)
+        self.trigram_finder = TrigramCollocationFinder.from_words(words, window_size = 20)
+
+        l = int(len(words)/50)
+
+        return self.bigram_finder.nbest(self.bigram_measures.pmi, l) + self.trigram_finder.nbest(self.bigram_measures.pmi, l)
+
+
+    # Takes a list of words and returns a list of tokens either words or collocations
+    def words2collocated(self, words):
+        start = 0
+        toks = []
+        for ngram in self.words2collocations(words):
+             toks.append(words[start:i+1])
+             start = i+1
+        if start < len(words):
+            toks.append(words[start:])
+        return toks
+
+
+
 # -- MULTI WORD EXPRESSIONS TOKENIZER ------------------------------------
 
 '''
@@ -164,7 +203,7 @@ words2mwes(words):
 '''
 
 class SharoffMWETokenizer():
-    # Helper function to generate the n-grams using chi-square test from the treebank
+    # Helper function to generate the n-grams using  from the Brown
     # ngram is a function: nltk.bigram or nltk.trigram
     # AssocMeasures is a class: BigramAssocMeasures or TrigramAssocMeasures
     # CollocationFinder is a class: BigramCollocationFinder or TrigramCollocationFinder
@@ -172,16 +211,18 @@ class SharoffMWETokenizer():
         # to create sets of examples we use the bigrams we find in the training sentences
         ngrams = list(map(ngram, training_sents))
         ngrams = list(map(list, ngrams)) # unwrap ngrams generator objects
+        ngrams = list(filter(lambda x: len(x) != 0, ngrams))
 
-        ngram_measures = AssocMeasures() # will compute chi-square test for all ngrams
-        finder = CollocationFinder.from_words(
-            nltk.corpus.treebank_raw.words(),
-            window_size = 20)
-        # a list of collocation generator objects to be identified based on chi-square test
-        found = list(map(lambda x: finder.above_score(ngram_measures.raw_freq, 1.0 / x), map(len, tuple(ngrams))))
-        found =  reduce(add, map(list, found)) # reduce it to the final list of collocation (warning: slow)
+        # filter out punctuation from Brown
+        corpus = list(filter(lambda x: x not in string.punctuation, nltk.corpus.brown.words()))
+        finder = CollocationFinder.from_words(corpus, window_size = 20)
+        # filter out stop words and infrequent collocations
+        finder.apply_freq_filter(2)
+        ignored_words = nltk.corpus.stopwords.words('english')
+        finder.apply_word_filter(lambda w: w.lower() in ignored_words)
 
-        return (ngrams, found)
+        found = finder.nbest(nltk.collocations.AssocMeasures.pmi, int(len(corpus)/50))
+        return (ngrams, finder)
 
 
     # sharoff dictionary consists of expressions and their statistical collocation measures
@@ -196,43 +237,43 @@ class SharoffMWETokenizer():
         }
 
 
-    # To train the classifier we use the Sharoff features on bigrams found in treebank
+    # To train the classifier we use the Sharoff features on bigrams found in Brown
     # and also in the Sharoff Dictionary.
     # To create training examples, we use the features of bigrams above and for the
-    # targets whether they are in the set of bigram collocations in treebank corpus
-    # generated with the Chi-square test provided by nltk's AssocMeasures()
+    # target whether they are in the set of bigram collocations in the Brown corpus
+    # generated with the PMI measures provided by nltk's AssocMeasures()
     def __init__(self):
-        print(str(datetime.now()) + ": Training decision tree classifier for the multi word expression tokenizer based on Sharoff's dictionary on the Treebank corpus...")
+        print(str(datetime.now()) + ": Training decision tree classifier for the multi word expression tokenizer based on Sharoff's dictionary on the Brown corpus...")
 
         # get the Sharoff dictionary
         f = open("../dictionaries/sharoff.json", 'r+')
         self.SharoffDict = json.load(f)
         f.close()
 
-        # get the traininf corpus: join the treebank sentence corpus into a text
-        # and filter out START tag and punctuation
-        training_sents = [list(filter(lambda w: w not in ['START'] and w not in string.punctuation, sent))
-                          for sent in nltk.corpus.treebank_raw.sents()]
+        # get the corpus
+        training_sents = [list(filter(lambda w: w not in string.punctuation, sent))
+                          for sent in nltk.corpus.brown.sents()]
         # filter out empty or 1-word sentences
         training_sents = list(filter(lambda s: len(s) > 1, training_sents))
         toks = reduce(add, training_sents) # merge all sentences into one text of tokenized words
 
         # get all bigrams and trigrams in training_sents and all statistical bigram and trigram collocations found in treebank
-        (bigrams, foundbigrams)   = self.__get_ngrams(training_sents, nltk.bigrams,  BigramAssocMeasures,  BigramCollocationFinder)
-        (trigrams, foundtrigrams) = self.__get_ngrams(training_sents, nltk.trigrams, TrigramAssocMeasures, TrigramCollocationFinder)
+        (bigrams,  finderbigrams)  = self.__get_ngrams(training_sents, nltk.bigrams,  BigramAssocMeasures,  BigramCollocationFinder)
+        (trigrams, findertrigrams) = self.__get_ngrams(training_sents, nltk.trigrams, TrigramAssocMeasures, TrigramCollocationFinder)
 
+        print(str(datetime.now()) + ": Constructing examples set with the Brown corpus...")
         # Create training examples with sharoff features, for each ngram in the dictionary
-        examples = [(self.__Sharoff_features(expr), expr in foundbigrams) #or expr in foundtrigrams)
-                       for expr in bigrams #or expr in trigrams
-                       if expr in self.SharoffDict.keys()]
+        examples = [(self.__Sharoff_features(expr), expr in finderbigrams or expr in findertrigrams)
+                       for expr in bigrams or expr in trigrams
+                       if ' '.join(map(str,expr)) in self.SharoffDict.keys()]
 
-        #  classifier for training with the Treebank corpus
+        print(str(datetime.now()) + ": Finished construction of " + len(examples) + " examples set with the Brown corpus.")
+        #  classifier for training with the Brown corpus
         size = int(len(examples)*0.2)
         train_set, test_set = examples[size:], examples[:size]
         self.classifier = nltk.DecisionTreeClassifier.train(train_set)
 
         print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
-
 
 
     # Use the classifier defined above to segment word toks into MWEs
@@ -241,7 +282,7 @@ class SharoffMWETokenizer():
         toks = []
         for ngram in list(nltk.bigrams(words)) + list(nltk.trigrams(words)):
             if self.classifier.classify(self.__Sharoff_features(ngram)) == True:
-                sents.append(words[start:i+1])
+                toks.append(words[start:i+1])
                 start = i+1
         if start < len(words):
             toks.append(words[start:])
@@ -322,9 +363,9 @@ class TopicModelling():
         wiki_src = '../raw/wiki/enwiki-articles.xml.bz2'
 
         # load the corpus of documents in the wikipedia archive and save parsed files to disk
-        self.wiki_corpus = WikiCorpus(articles)
-        self.wiki_dictionary = wiki_corpus.dictionary
-        wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
+        self.wiki_corpus = WikiCorpus(wiki_src)
+        self.wiki_dictionary = self.wiki_corpus.dictionary
+        self.wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
         MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm")
 
 
@@ -420,7 +461,9 @@ class NameEntityDetector():
         return set(filter(lambda x: x[1] != 'O', answered))
         # return answered
 
-ned = NameEntityDetector()
+    def text2unine(self, input_text):
+        named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
+        return named_entities
 
 # lda_topics = extracttopicsupdate(sys.argv[1], [0, 50])
 # print(lda_topics)
@@ -453,3 +496,8 @@ print("FOCUSED: \n")
 print(set(focused_named_entities))
 print("CLEARER: \n")
 print(set(clearer_named_entities))
+#ned = NameEntityDetector()
+#
+#f = open(sys.argv[1])
+#input_text = f.read()
+#print(ned.text2ne(input_text))
