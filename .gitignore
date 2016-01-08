@@ -3,6 +3,10 @@
 /Herox ßtuff
 /text/*
 /raw/*
+/tests/nltk_data
+
+# pycache only makes your code run a little faster, it's individual
+/core/__pycache__
 
 # seek environment should be recreated at every pull
 /seek-env/
