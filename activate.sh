@@ -19,17 +19,23 @@ source seek-env/bin/activate
 #python -m nltk.downloader all
 
 ## prepare NLTK data and download stanford NLP package
-## Path on local machines
-# export NLTK_DATA="$HOME/nltk_data"
-## Path on the server!
-#export NLTK_DATA="/usr/local/share/nltk_data"
+hostmachine=`hostname`
+if [[ $hostmachine == 'cloud-vm-45-110' ]]; then
+  ## Path on the server!
+  export NLTK_DATA="/usr/local/share/nltk_data"
+else
+  ## Path on local machines
+  export NLTK_DATA="$HOME/nltk_data"
+fi
 cwd=$(pwd)
 cd $NLTK_DATA
 
+# One time install run for stanford
 # wget http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip
 curl http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip > stanford-ner.zip
 unzip stanford-ner.zip -d stanford-ner
 rm -f stanford-ner.zip
+
 export CLASSPATH="$NLTK_DATA/stanford-ner/stanford-ner.jar"
 export STANFORD_MODELS="$NLTK_DATA/stanford-ner/classifiers"
 

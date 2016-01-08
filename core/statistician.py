@@ -367,9 +367,9 @@ class TopicModelling():
 #        self.wiki_dictionary = self.wiki_corpus.dictionary
 #        self.wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
         MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm", self.wiki_corpus)
-      
+
         print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")
-       
+
     # extract topics with lda
     # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
     # num:      number of topics to extract
@@ -419,10 +419,7 @@ class NameEntityDetector():
         chunked_sents = self.chunker.text2chunks(input_text)
         named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
         person_entities = dict(self.name_tagger.tag(re.split("\,?\.?\s+", input_text)))
-        # filtered_named_entities = dict((k, v) for k, v in named_entities.items() if v != 'O')
-        # return filtered_named_entities
-        # Create a list to store the final mapping of NEs
-        # print(named_entities)
+        # Create a list to store a more complete mapping of NEs
         answered = []
         for chunked_sent in chunked_sents:
             # print(chunked_sent)
@@ -460,11 +457,23 @@ class NameEntityDetector():
                 else:
                     answered.append((ent_key, person_category))
         return set(filter(lambda x: x[1] != 'O', answered))
-        # return answered
 
     def text2unine(self, input_text):
         named_entities = dict(self.stanford_tagger.tag(re.split("\,?\.?\s+", input_text)))
         return named_entities
+
+    def clearnamedentities(self, named_entities, sent_freqs):
+        focused_named_entities = []
+        relevant_named_entities = []
+        for named_entity in named_entities:
+            for sent_freq in sent_freqs:
+                if (named_entity[0] in sent_freq[0]):
+                    focused_named_entities.append(named_entity)
+        for ne in set(focused_named_entities):
+            for cne in clearer_named_entities:
+                if (ne[0] in cne[0]):
+                    relevant_named_entities.append(cne)
+        return (set(focused_named_entities), set(relevant_named_entities))
 
 # lda_topics = extracttopicsupdate(sys.argv[1], [0, 50])
 # print(lda_topics)
@@ -472,57 +481,39 @@ ned = NameEntityDetector()
 f = open(sys.argv[1])
 input_text = f.read()
 sent_freqs = filefreqsentences(sys.argv[1])
+# This prints out nice sentences, could be useful for summary
 # print(sent_freqs)
 named_entities = ned.text2ne(input_text)
-# print(named_entities)
-# print(lda_topics)
-clearer_named_entities = []
-focused_named_entities = []
-for named_entity in named_entities:
-    for sent_freq in sent_freqs:
-        if (any(word in named_entity[0] for word in sent_freq[0])):
-            clearer_named_entities.append(named_entity)
-        if (named_entity[0] in sent_freq[0]):
-            focused_named_entities.append(named_entity)
-#     for (k, v) in lda_topics.items():
-#         if (k in named_entity[0] and v > 0.09):
-relevant_named_entities = []
-for ne in set(focused_named_entities):
-    for cne in clearer_named_entities:
-        if (ne[0] in cne[0]):
-            relevant_named_entities.append(cne)
-
-print("RELEVANT: \n")
-print(set(relevant_named_entities))
-print("FOCUSED: \n")
-print(set(focused_named_entities))
-print("CLEARER: \n")
-print(set(clearer_named_entities))
-
-
+fne, rne = ned.clearnamedentities(named_entities, sent_freqs)
+print("Regular named entities: \n")
+print(named_entities)
+print("Focused named entities: \n")
+print(fne)
+print("Relevant named entities: \n")
+print(rne)
 
 # -- QUESTION CLASSIFIER --------------------------------------------------
 '''
 Using a modified version of the question classifier in nltk_data/corpora/qc
 
-The classifier below tags a question with a semantic tag based on a set of 
+The classifier below tags a question with a semantic tag based on a set of
 features: the presence of various words in the question's text, like any wh
 word, the position of a question mark, the use of named entities and their
-category etc. 
+category etc.
 It is trained with a modified version of the qc corpus, stored as dictionar
 in ../corpora/, where each question is mapped to a tuple representing its
 class and subclass
 
 The API consists of:
 classify(question):
-    gets the text of the question in string format, splits it into tokens, then classifies it accordingly 
+    gets the text of the question in string format, splits it into tokens, then classifies it accordingly
     input:   a text in unicode/string format
-    returns: a tuple representing the class and subclass 
+    returns: a tuple representing the class and subclass
 
 '''
 
 class QuestionClassifier():
-    # extract question features from token list 
+    # extract question features from token list
     def __question_features(self, toks):
         utoks = [w.lower() for w in toks]
         udict = dict(enumerate(utoks))
@@ -549,7 +540,7 @@ class QuestionClassifier():
     def __init__(self):
         print(str(datetime.now()) + ": Training question classifier with decision tree on modified QC corpus...")
 
-        # use the NER to find NEs in questions and classify them by these features 
+        # use the NER to find NEs in questions and classify them by these features
         self.ner = NameEntityDetector()
 
         # get the question corpus into a set of tuples
@@ -557,7 +548,7 @@ class QuestionClassifier():
         taining_qs = json.load(f)
         f.close()
 
-        # Create training features by calling question_features on each tokenised question 
+        # Create training features by calling question_features on each tokenised question
         featuresets = [(self.__question_features(nltk.word_tokenize(q[0])), q[1])
                        for q in training_qs.items()]
 
@@ -569,9 +560,7 @@ class QuestionClassifier():
         print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
 
 
-    # Classify questions 
+    # Classify questions
     def classify(self, question):
         toks = nltk.word_tokenize(question)
         return self.classifier.classify(toks)
-
-
