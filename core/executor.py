@@ -9,10 +9,10 @@ from subprocess import call
 from os.path import basename
 from bs4 import BeautifulSoup
 
-def transfer_file(filename):
-    os.system('scp %s $IC_USERNAME@shell1.doc.ic.ac.uk:~' % filename)
-    # TODO: BUG FIX, deal with different path but same filename
-    os.system("ssh -n $IC_USERNAME@shell1.doc.ic.ac.uk 'scp %s $IC_USERNAME@cloud-vm-45-110.doc.ic.ac.uk:/develop/Seek/raw/txt' " % filename)
+def transfer_file(filepath):
+    os.system('scp %s $IC_USERNAME@shell1.doc.ic.ac.uk:~' % filepath)
+    filename = basename(filepath)
+    os.system("ssh -n $IC_USERNAME@shell1.doc.ic.ac.uk 'scp %s $IC_USERNAME@cloud-vm-45-110.doc.ic.ac.uk:/develop/Seek/txt/ && rm %s' " % (filename, filename))
 
 # -----------------------------------------------------------------------------
 # SEEK UPLOAD <SRC>
