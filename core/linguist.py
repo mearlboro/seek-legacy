@@ -204,6 +204,7 @@ def augment_ne(model, text, sents, freqs):
     # print(rne)e getsummary(src, args):
     return []
 
+
 '''
 Obtains a summary of each text in a directory or the text in a file, by choosing the
 sentences of the highest augmented frequency:
@@ -224,9 +225,11 @@ def getsummary(src, args):
     num = args[1]
     docs = getdocs(src)    
 
+    st = getSentenceTokenizer()
+
     summaries = []
     for doc in docs:
-        sents = getSentenceTokenizer().text2sents(doc)
+        sents = st.text2sents(doc)
         freqs = sentence_freq(doc, sents)
         if model == 0 or model == 1:
             freqs = augment_topics(model, doc, sents, freqs)
@@ -239,14 +242,59 @@ def getsummary(src, args):
         
         summaries += [summary]
     
+    del st
+
     return summaries
 
 
 
 
 # -- COMMAND entities --------------------------------------------------------------------
+'''
+Finds the named entities after tagging and chunking the sentence with the trained Name
+Entity Detector. For each document it returns a triple consisting of the regular named
+entities found with the classifier, and focused and relevant name entities found with 
+sentence frequency measurements.
+
+    <src> is a file or directory
+    <args[0]> can be 0 (chunk-based detection) or 1 (text-based detection).
+    <args[1]> can be 0 (NEs), 1 (FNEs), 2 (RNEs), 3 (all)
+'''
+
 def getentities(src, args):
-    return []
+    if len(args) < 2:
+        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        sys.exit(0)
+
+    model = args[0]
+    etype = args[1]
+    docs  = getdocs(src)    
+
+    st  = getSentenceTokenizer()
+    ch  = getChunkParser()
+    ner = getNameEntityDetector()
+
+    entities = []
+    for doc in docs:
+        sents  = st.text2sents(doc)
+        if model == 0:
+            chunks = ch.sents2chunks(sents)
+            nes    = ner.chunks2ne(chunks)
+        elif model == 1:
+            nes    = ner.text2ne(doc)
+        freqs  = sentence_freq(doc, sents)
+        fnes, rnes = ner.clearnamedentitites(nes, freqs)
+
+        entities += [(nes, fnes, rnes)]
+         
+    del st
+    del ch
+    del ner
+   
+    if etype >= 4:
+        return entities
+    elif etype >= 0:
+        return [e[etype] for e in entities]  
 
 
 
@@ -324,6 +372,8 @@ def lda(docs, num):
     return lda_topics.print_topics(num)
 
 
+
+
 # -- COMMAND relationships ---------------------------------------------------------------
 def getrelationships(src, args):
     return []
@@ -331,7 +381,8 @@ def getrelationships(src, args):
 
 
 
-#######################################################################################
+##########################################################################################
+
 commands = {
     'summary': getsummary,
     'entities': getentities,
