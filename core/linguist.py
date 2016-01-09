@@ -62,7 +62,7 @@ def getdocs(src):
         print("Collecting documents at directory " + src + " ...")
         documents = []
         for f in glob.glob(os.path.join(src, '*.txt')):
-            documents += open(f, 'r+').read()
+            documents += [open(f, 'r+').read()]
         return documents
     if os.path.isfile(src):
         print("Collecting document " + src + " ...")
@@ -135,7 +135,7 @@ def filter_stop_words(toks):
 
 
 # Get the weight of each sentence in a text based on frequency 
-def sentence_freq(text):
+def sentence_freq(text, sents):
     # get and filter words
     words = nltk.word_tokenize(text)
     words = filter_punct(words) 
@@ -145,43 +145,110 @@ def sentence_freq(text):
     voc = vocab(filtered_lower)
     freqs = word_freq(filtered_lower)
 
-    # Get the LSI topics of the text
-    # TODO: replace with TopicModelling class?
-    num = 10 # TODO: choose a number that has a relevance!!!
-    dictionary = corpora.Dictionary([filtered_words])
-    corp = [dictionary.doc2bow(filtered_words)]
-    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
-    # returns the topics as a dictionary of words and scores
-    topics = topics2dict(lsi_topics.print_topics(num))
-
-    # get sents
-    sents = getSentenceTokenizer().text2sents(text)
-
     # when summing frequencies per sentence thus use wordfreqs
-    # also add bias from topics in that phrase
     sentfreqs = []
     for sent in sents:
-        sentfreqs += [(reduce(lambda x,y: x + ' ' + y, sent),
-            numpy.mean(list(map(lambda word: word.lower() in voc and freqs.get(word) or 0, sent))) +
-            sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))
-        )]
+        sentfreqs += [(sent, numpy.mean(list(map(lambda word: word.lower() in voc and freqs.get(word) or 0, sent))))]
 
-    # sort by relevance descending
-    sortedfreqs = sorted(sentfreqs, key=lambda x:x[1], reverse=True)
-    return sortedfreqs
-
+    return sentfreqs
 
 
 
 #######################################################################################
+
 # -- COMMAND summary ---------------------------------------------------------------------
-def getsummary(src, args):
+'''
+When summing frequencies per sentence add bias from topics in that phrase
+    model: 0 for LDA, 1 for LSI
+    text : the content of a document in a string
+    sents: the sentences in a document - a list of lists of word and punctuation tokens
+    freqs: the output of sentence_frequency(text, sents)
+'''
+def augment_topics(model, text, sents, freqs):
+    num = 10 # TODO: choose a number that has a relevance!!!
+
+    if model == 0:
+        topics = lda2dict(lda([text], num))[1] # TODO: better idea?
+    else:
+        topics = lsi2dict(lsi([text], num))
+
+    sentfreqs = []
+    for sent,freq in freqs:
+        sentfreqs +=  [(reduce(lambda x,y: x + ' ' + y, sent),
+                        freq + sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))
+                      )]
+    return sentfreqs
+
+
+'''
+When summing frequencies per sentence add bias from named entities in that phrase
+    model: 2 for NEs, 3 for Focused NEs
+    text : the content of a document in a string
+    sents: the sentences in a document - a list of lists of word and punctuation tokens
+    freqs: the output of sentence_frequency(text, sents)
+'''
+def augment_ne(model, text, sents, freqs):
+    # TODO(afterburner): make this happen
+    # ned =getNameEntityDetector()
+    # f = open(sys.argv[1])
+    # input_text = f.read()
+    # sent_freqs = filefreqsentences(sys.argv[1])
+    # named_entities = ned.chunks2ne(input_text)
+    # ned.chunks2ne(input_text)
+    # fne, rne = ned.clearnamedentities(named_entities, sent_freqs)
+    # print("Regular named entities: \n")
+    # print(named_entities)
+    # print("Focused named entities: \n")
+    # print(fne)
+    # print("Relevant named entities: \n")
+    # print(rne)e getsummary(src, args):
     return []
+
+'''
+Obtains a summary of each text in a directory or the text in a file, by choosing the
+sentences of the highest augmented frequency:
+The augmented frequency is calculated as the average word frequencies of the filtered 
+words in each sentence (as returned by sentence_freq), summed with a bias coming from
+the presence of topics, named entities, or both in the sentence.
+
+    <src> is a file or directory
+    <args[0]> can be 0 (LDA), 1 (LSI), 2 (NEs), 3 (Focused NEs), default behaviour is LDA.
+    <args[1]> must be an integer representing the number of topics to extract, default number is 10.
+'''
+def getsummary(src, args):
+    if len(args) < 2:
+        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        sys.exit(0)
+
+    model = args[0]
+    num = args[1]
+    docs = getdocs(src)    
+
+    summaries = []
+    for doc in docs:
+        sents = getSentenceTokenizer().text2sents(doc)
+        freqs = sentence_freq(doc, sents)
+        if model == 0 or model == 1:
+            freqs = augment_topics(model, doc, sents, freqs)
+        elif model == 2 or model == 3:
+            freqs = augment_nes(model, doc, sents, freqs)
+        sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
+
+        min_freq = sortedfreqs[num][1]
+        summary = [f[0] for f in list(filter(lambda f: f[1] >= min_freq, freqs))]
+        
+        summaries += [summary]
+    
+    return summaries
+
+
 
 
 # -- COMMAND entities --------------------------------------------------------------------
 def getentities(src, args):
     return []
+
+
 
 
 # -- COMMAND topics ----------------------------------------------------------------------
@@ -201,6 +268,49 @@ def gettopics(src, args):
 
     docs = getdocs(src)    
 
+    if args[0] == 1:
+        print("LSI model topics:")
+        return lsi(docs, args[1])
+    else:
+        print("LDA model topics:")
+        return lda(docs, args[1])
+
+
+def lsi2dict(topics):
+    topics = topics[0][1].split('+')
+    pairs  = [topic.split('*') for topic in topics]
+    pairs  = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
+    return dict(pairs)
+
+def lda2dict(topics):
+    dicts = []
+    for i in range(len(topics)):
+        topic = topics[i][1].split('+') 
+        pairs = [t.split('*') for t in topic]
+        pairs = [(''.join(list(filter(lambda c:c not in " ", pair[1]))), float(pair[0])) for pair in pairs]
+        dicts += [dict(pairs)]
+
+    return dicts
+
+
+def lsi(docs, num):
+    # TODO: chunk mwes and collocations if necessary.
+    # tokenize each doc, filter punctuation and stop words
+    docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
+    print(docs)
+    filtered = [f[1] for f in list(map(filter_stop_words, docs))]
+
+    # create Gensim dictionary and corpus    
+    dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
+    corp = [dictionary.doc2bow(reduce(add, filtered))]
+
+    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
+
+    # returns the topics as a dictionary of words and scores
+    return lsi_topics.print_topics(num)
+
+
+def lda(docs, num):
     # TODO: chunk mwes and collocations if necessary.
     # tokenize each doc, filter punctuation and stop words
     docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
@@ -210,29 +320,6 @@ def gettopics(src, args):
     dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
     corp = [dictionary.doc2bow(reduce(add, filtered))]
 
-    if args[0] == 1:
-        print("LSI model topics:")
-        return lsi(dictionary, corp, args[1])
-    else:
-        print("LDA model topics:")
-        return lda(dictionary, corp, args[1])
-
-
-def topics2dict(topics):
-    topics = topics[0][1].split('+')
-    pairs  = [topic.split('*') for topic in topics]
-    pairs  = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
-    return dict(pairs)
-    
-
-def lsi(dictionary, corp, num):
-    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
-
-    # returns the topics as a dictionary of words and scores
-    return topics2dict(lsi_topics.print_topics(num))
-
-
-def lda(dictionary, corp, num):
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
     return lda_topics.print_topics(num)
 
@@ -269,4 +356,3 @@ if len(sys.argv) > 2:
         print("<command> can be \n summary \n entities \n topics \n relationships")
         sys.exit(0)
 
-    print(sentence_freq(getdocs(src)[0]))
