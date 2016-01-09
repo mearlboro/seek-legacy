@@ -4,11 +4,9 @@ import regex as re
 from datetime import datetime
 from functools import reduce
 from operator import add
-from linguist import extracttopicsinitial, getfreqsentences, extracttopicsupdate, filefreqsentences
+
 import nltk
-import nltk.chunk
-import nltk.data
-import nltk.tag
+import  nltk.chunk, nltk.data, nltk.tag
 from nltk.collocations import *
 from nltk.collocations import BigramAssocMeasures, TrigramAssocMeasures
 from nltk.tokenize import MWETokenizer
@@ -541,7 +539,6 @@ class QuestionClassifier():
         whlist = ['who', 'what', 'where', 'when', 'why']
 
         return {
-
             'is-who'  : 'who'   in udict or 'name'  in udict,
             'is-what' : 'what'  in udict or 'which' in udict,
             'is-where': 'where' in udict,
