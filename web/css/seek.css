@@ -16,6 +16,13 @@
  - spacing
 */
 
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+
 /* Base styles (custom + via Skeleton)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
@@ -30,7 +37,6 @@ html {
 
 body {
   background-image: url("../images/homepage.png");
-  background-size: cover;
   background-repeat: no-repeat;
 
   font-size: 1.5em;
@@ -38,7 +44,9 @@ body {
   font-weight: 400;
   font-family: "Raleway", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: #bfbfbf;
+  text-align: center;
 }
+
 
 /* Typography (via Skeleton)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */

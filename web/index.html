@@ -19,6 +19,7 @@
   <!-- CSS
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
   <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/bootstrap.css">
   <link rel="stylesheet" href="css/seek.css">
 
   <!-- Icons (FontAwesome and favicon)
@@ -34,15 +35,27 @@
 
 <body>
   <section id="home">
+
+    <div class="row" style="margin-top: 5%">
+      <!-- Seek Almighty -->
+      <div class="col-lg-12"><img src="images/seek.png"/></div>
+    </div>
+
     <div class="row">
-      <div class="column" id="query">
+      <div class="col-lg-2">
         <!-- two images as buttons -->
-        <div class="button button-round fa fa-upload"></div>
-        <div class="button button-round fa fa-microphone"></div>
-        <!-- input box -->
+        <span class="btn btn-lg fa fa-upload"></span>
+        <span class="btn btn-lg fa fa-microphone"></span>
       </div>
 
+      <div class="col-lg-8">
+        <!-- input box -->
+        <span class="input-group">
+          <input type="text" placeholder="What would you like to know?">
+        </span>
+      </div>
     </div>
+
   </section>
 
   <section id="answer">
