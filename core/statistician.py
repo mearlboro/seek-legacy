@@ -329,7 +329,7 @@ text2chunks(text):
 
 class ChunkParser():
     def __init__(self):
-        self.chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
+        self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
         # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
     def text2chunks(self, text):
@@ -425,7 +425,7 @@ class NERComboTagger(StanfordNERTagger):
 class NameEntityDetector():
     def __init__(self):
         self.chunker = ChunkParser()
-        classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek4.ser.gz'
+        classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek5.ser.gz'
         self.name_tagger = NERComboTagger(classifier_path1,stanford_ner_models=classifier_path1)
         self.name_tagger._stanford_jar = os.environ.get("CLASSPATH")
 
@@ -433,6 +433,7 @@ class NameEntityDetector():
         split_text = re.split("\,?\.?\s+", input_text)
         named_entities = dict(self.name_tagger.tag(split_text))
         return set(filter(lambda x: x[1] != 'O', named_entities.items()))
+
     def chunks2ne(self, input_text):
         chunked_sents = self.chunker.text2chunks(input_text)
         split_text = re.split("\,?\.?\s?\.?\,?", input_text)
