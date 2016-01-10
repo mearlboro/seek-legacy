@@ -7,7 +7,7 @@
 The code in this file instantiates (thus loads and trains) all the classes in Statistician
 then dumps them as objects into pickes (python object files) for later use by the other
 core modules of Seek.
-The training performed here is performed on standard corpuses and most likely needs to be 
+The training performed here is performed on standard corpuses and most likely needs to be
 done only when it is known that corpuses have been changed/updated.
 These tools can be futher trained depending on the knowledge base required by a specialised
 system. To learn more see {train.py}
@@ -70,7 +70,7 @@ with open('skills/init_topics.pkl', 'wb') as output:
     pickler = pickle.Pickler(output, -1)
     pickler.dump(tm)
 print(" √ " + str(datetime.now()) + ": Created trained topic model on the Wikipedia Corpus.")
-del tm 
+del tm
 
 qc = QuestionClassifier()
 with open('skills/init_qc.pkl', 'wb') as output:
@@ -78,5 +78,3 @@ with open('skills/init_qc.pkl', 'wb') as output:
     pickler.dump(qc)
 print(" √ " + str(datetime.now()) + ": Created trained question classifier on the QC Corpus.")
 del qc
-
-

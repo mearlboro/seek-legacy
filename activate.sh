@@ -42,6 +42,7 @@ export STANFORD_MODELS="$ST/classifiers"
 
 ## download nltk trainer and prepare the NLTK taggers and chunkers used by seek
 ## warning: slow
+# echo "WARNING!!! Slow"
 #git clone https://github.com/japerk/nltk-trainer
 #cd nltk-trainer
 #python setup.py install

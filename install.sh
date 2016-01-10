@@ -17,7 +17,7 @@ elif [[ $platform == 'osx' ]]; then
 fi
 
 # -- ruby -----------------------------------------------------------------------
-# gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
 curl -sSL https://get.rvm.io | bash -s stable --ruby
 rvm install 2.2.1
 /bin/bash --login
@@ -47,11 +47,11 @@ elif [[ $platform == 'osx' ]]; then
   # -- setup environment --------------------------------------------------------
   virtualenv -p /usr/local/bin/python3 seek-env
   # -- dont forget to always activate / deactivate ------------------------------
-  /bin/bash -c ". seek-env/bin/activate; exec /bin/bash -i"
+  source 'seek-env/bin/activate'
   cd seek-env
 
   # -- textract dependencies ----------------------------------------------------
-  brew install libxml2 antiword unrtf poppler tesseract flac lame libmad libsoxr libjpeg
+  # brew install libxml2 antiword unrtf poppler tesseract flac lame libmad libsoxr libjpeg
   brew install homebrew/dupes/zlib
 
 fi
@@ -73,22 +73,25 @@ ed -s lib/python3.4/site-packages/textract-1.4.0-py3.4.egg/textract/parsers/util
 pip3 install -U nltk
 python -m nltk.downloader all
 
-# prepare nltk data and download stanford NLP package 
+# prepare nltk data and download stanford NLP package
 # Path on local machines
 export NLTK_DATA="$HOME/nltk_data"
-## Path on the server!
-#export NLTK_DATA="/usr/local/share/nltk_data"
+# Path on the server!
+export NLTK_DATA="/usr/local/share/nltk_data"
 cwd=$(pwd)
 cd $NLTK_DATA
 
-curl http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip > stanford-ner.zip
+curl http://nlp.stanford.edu/software/stanford-ner-2015-04-20.zip > stanford-ner.zip
 unzip stanford-ner.zip -d stanford-ner
-rm -f stanford-ner.zip
-export CLASSPATH="$NLTK_DATA/stanford-ner/stanford-ner.jar"
-export STANFORD_MODELS="$NLTK_DATA/stanford-ner/classifiers"
+rm -f stanford-ner.zipexport CLASSPATH="$NLTK_DATA/stanford-ner/stanford-ner.jar"
+export ST="$NLTK_DATA/stanford-ner"
+export CLASSPATH="$ST/stanford-ner.jar:$ST/lib/joda-time.jar:$ST/lib/jollyday-0.4.7.jar:$ST/lib/stanford-ner-resources.jar"
+export STANFORD_MODELS="$ST/classifiers"
+
 
 # download nltk trainer and prepare the NLTK taggers and chunkers used by seek
 # warning: slow
+echo "WARNING!!! Slow"
 git clone https://github.com/japerk/nltk-trainer
 cd nltk-trainer
 python setup.py install
@@ -113,15 +116,15 @@ if [[ $platform == 'linux' ]]; then
   export BLAS=/usr/lib/libblas.so
 
 elif [[ $platform == 'osx' ]]; then
-  brew install gcc      # for fortran 
+  # brew install gcc      # for fortran
 
   curl http://www.netlib.org/blas/blas-3.6.0.tgz > blas.tgz
   tar xvf blas.tgz
   rm -f blas.tgz
-  cd BLAS-3.6.0 
+  cd BLAS-3.6.0
   make
   cp blas_LINUX.a libblas.a
-  sudo cp libblas.a /usr/local/lib/ 
+  sudo cp libblas.a /usr/local/lib/
   cd ..
   rm -rf BLAS-3.6.0
 
@@ -134,7 +137,5 @@ elif [[ $platform == 'osx' ]]; then
   sudo cp liblapack.a /usr/local/lib/
   cd ..
   rm -rf lapack-3.6.0
-  
+
 fi
-
-

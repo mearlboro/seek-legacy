@@ -332,9 +332,7 @@ class ChunkParser():
         self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
         # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
-    def text2chunks(self, text):
-        sent_tok = SentenceTokenizer()
-        tokenized_sentences = sent_tok.text2sents(text)
+    def sents2chunks(self, tokenized_sentences):
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
         # TODO: train chunker on brown if that's the case
         # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
@@ -434,8 +432,7 @@ class NameEntityDetector():
         named_entities = dict(self.name_tagger.tag(split_text))
         return set(filter(lambda x: x[1] != 'O', named_entities.items()))
 
-    def chunks2ne(self, input_text):
-        chunked_sents = self.chunker.text2chunks(input_text)
+    def chunks2ne(self, input_text, chunked_sents):
         split_text = re.split("\,?\.?\s?\.?\,?", input_text)
         named_entities = dict(self.name_tagger.tag(split_text))
         named_entities = dict(filter(lambda x: x[1] != 'O', named_entities.items()))

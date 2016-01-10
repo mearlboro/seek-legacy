@@ -58,7 +58,7 @@ def getQuestionClassifier():
 
 ''' Get text from document or directory '''
 def getdocs(src):
-    if os.path.isdir(src):  
+    if os.path.isdir(src):
         print("Collecting documents at directory " + src + " ...")
         documents = []
         for f in glob.glob(os.path.join(src, '*.txt')):
@@ -73,7 +73,7 @@ def getdocs(src):
 ######################################################################################
 ''' Helper functions for NLP '''
 
-# Get the vocabulary of a document split in toks. 
+# Get the vocabulary of a document split in toks.
 def vocab(toks):
     voc = []
     voc = sorted(set(voc + sorted(set([w.lower() for w in toks]))))
@@ -89,7 +89,7 @@ def word_freq(toks):
 
 # Filter punctuation
 def filter_punct(toks):
-    words = list(filter(lambda w: w not in string.punctuation, toks)) 
+    words = list(filter(lambda w: w not in string.punctuation, toks))
     return words
 
 
@@ -134,13 +134,13 @@ def filter_stop_words(toks):
 
 
 
-# Get the weight of each sentence in a text based on frequency 
+# Get the weight of each sentence in a text based on frequency
 def sentence_freq(text, sents):
     # get and filter words
     words = nltk.word_tokenize(text)
-    words = filter_punct(words) 
+    words = filter_punct(words)
     (filtered_words, filtered_lower) = filter_stop_words(words)
-    
+
     # get vocab and freqs
     voc = vocab(filtered_lower)
     freqs = word_freq(filtered_lower)
@@ -208,7 +208,7 @@ def augment_ne(model, text, sents, freqs):
 '''
 Obtains a summary of each text in a directory or the text in a file, by choosing the
 sentences of the highest augmented frequency:
-The augmented frequency is calculated as the average word frequencies of the filtered 
+The augmented frequency is calculated as the average word frequencies of the filtered
 words in each sentence (as returned by sentence_freq), summed with a bias coming from
 the presence of topics, named entities, or both in the sentence.
 
@@ -223,7 +223,7 @@ def getsummary(src, args):
 
     model = args[0]
     num = args[1]
-    docs = getdocs(src)    
+    docs = getdocs(src)
 
     st = getSentenceTokenizer()
 
@@ -239,9 +239,9 @@ def getsummary(src, args):
 
         min_freq = sortedfreqs[num][1]
         summary = [f[0] for f in list(filter(lambda f: f[1] >= min_freq, freqs))]
-        
+
         summaries += [summary]
-    
+
     del st
 
     return summaries
@@ -253,7 +253,7 @@ def getsummary(src, args):
 '''
 Finds the named entities after tagging and chunking the sentence with the trained Name
 Entity Detector. For each document it returns a triple consisting of the regular named
-entities found with the classifier, and focused and relevant name entities found with 
+entities found with the classifier, and focused and relevant name entities found with
 sentence frequency measurements.
 
     <src> is a file or directory
@@ -268,7 +268,7 @@ def getentities(src, args):
 
     model = args[0]
     etype = args[1]
-    docs  = getdocs(src)    
+    docs  = getdocs(src)
 
     st  = getSentenceTokenizer()
     ch  = getChunkParser()
@@ -279,22 +279,24 @@ def getentities(src, args):
         sents  = st.text2sents(doc)
         if model == 0:
             chunks = ch.sents2chunks(sents)
-            nes    = ner.chunks2ne(chunks)
+            nes    = ner.chunks2ne(doc, chunks)
         elif model == 1:
             nes    = ner.text2ne(doc)
-        freqs  = sentence_freq(doc, sents)
-        fnes, rnes = ner.clearnamedentitites(nes, freqs)
+        # freqs  = sentence_freq(doc, sents)
+        # fnes, rnes = ner.clearnamedentitites(nes, freqs)
 
-        entities += [(nes, fnes, rnes)]
-         
+        # entities += [(nes, fnes, rnes)]
+        entities = nes
+
     del st
     del ch
     del ner
-   
+
     if etype >= 4:
         return entities
     elif etype >= 0:
-        return [e[etype] for e in entities]  
+        return [e for e in entities]
+        # return [e[etype] for e in entities]
 
 
 
@@ -314,7 +316,7 @@ def gettopics(src, args):
         print("Incorrect arguments: expected \n linguist.py topics <src> <model> <num>")
         sys.exit(0)
 
-    docs = getdocs(src)    
+    docs = getdocs(src)
 
     if args[0] == 1:
         print("LSI model topics:")
@@ -333,7 +335,7 @@ def lsi2dict(topics):
 def lda2dict(topics):
     dicts = []
     for i in range(len(topics)):
-        topic = topics[i][1].split('+') 
+        topic = topics[i][1].split('+')
         pairs = [t.split('*') for t in topic]
         pairs = [(''.join(list(filter(lambda c:c not in " ", pair[1]))), float(pair[0])) for pair in pairs]
         dicts += [dict(pairs)]
@@ -348,7 +350,7 @@ def lsi(docs, num):
     print(docs)
     filtered = [f[1] for f in list(map(filter_stop_words, docs))]
 
-    # create Gensim dictionary and corpus    
+    # create Gensim dictionary and corpus
     dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
     corp = [dictionary.doc2bow(reduce(add, filtered))]
 
@@ -364,7 +366,7 @@ def lda(docs, num):
     docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
     filtered = [f[1] for f in list(map(filter_stop_words, docs))]
 
-    # create Gensim dictionary and corpus    
+    # create Gensim dictionary and corpus
     dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
     corp = [dictionary.doc2bow(reduce(add, filtered))]
 
@@ -406,4 +408,3 @@ if len(sys.argv) > 2:
     else:
         print("<command> can be \n summary \n entities \n topics \n relationships")
         sys.exit(0)
-
