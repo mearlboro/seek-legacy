@@ -73,7 +73,7 @@ print(" √ " + str(datetime.now()) + ": Created trained topic model on the Wiki
 del tm 
 
 qc = QuestionClassifier()
-with open('skills/init_topics.pkl', 'wb') as output:
+with open('skills/init_qc.pkl', 'wb') as output:
     pickler = pickle.Pickler(output, -1)
     pickler.dump(qc)
 print(" √ " + str(datetime.now()) + ": Created trained question classifier on the QC Corpus.")

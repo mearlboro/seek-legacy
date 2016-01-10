@@ -1,26 +1,14 @@
 # -*- coding: utf-8 -*-
-import sys
-import os
-import string
-import logging
-import pprint
-import json
+import sys, os, string, logging, pprint, json, subprocess
 import regex as re
-import subprocess
 from datetime import datetime
 from functools import reduce
 from operator import add
-from linguist import extracttopicsinitial
-from linguist import getfreqsentences
-from linguist import extracttopicsupdate
-from linguist import filefreqsentences
+
 import nltk
-import nltk.chunk
-import nltk.data
-import nltk.tag
+import  nltk.chunk, nltk.data, nltk.tag
 from nltk.collocations import *
-from nltk.collocations import BigramAssocMeasures
-from nltk.collocations import TrigramAssocMeasures
+from nltk.collocations import BigramAssocMeasures, TrigramAssocMeasures
 from nltk.tokenize import MWETokenizer
 from gensim.corpora import WikiCorpus, wikicorpus, TextCorpus, MmCorpus
 from nltk.tag.stanford import StanfordNERTagger
@@ -544,7 +532,6 @@ class QuestionClassifier():
         whlist = ['who', 'what', 'where', 'when', 'why']
 
         return {
-
             'is-who'  : 'who'   in udict or 'name'  in udict,
             'is-what' : 'what'  in udict or 'which' in udict,
             'is-where': 'where' in udict,
@@ -582,5 +569,5 @@ class QuestionClassifier():
 
 
     # Classify questions
-    def classify(self, toks, nes):
-        return self.classifier.classify(toks, nes)
+    def classify(self, toks, nes):    
+        return self.classifier.classify(self.__question_features(toks, nes))
