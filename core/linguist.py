@@ -1,296 +1,409 @@
-import numpy
-import nltk
-import gensim
-import os
-import glob
-import sys
-import numpy
+# Seek: linguist.py
+# Interface to natural language processing and topic modelling
+
+# ------------------------------------------------------------------------------------
+
+'''
+This script performs various NLP tasks by importing the trained classes in statistician.
+The classes perform independent tasks and their functions are chained to perform:
+    Topic Extraction
+    Named Entity Extraction
+    Text Summarisation
+    Question Classification
+
+Use script by calling $ python linguist.py <command> <source>
+
+'''
+
+# ------------------------------------------------------------------------------------
+
+import os, glob, sys, pickle
+import string
+from operator  import *
 from itertools import *
 from functools import *
+
+import numpy, nltk, gensim
 from nltk.corpus import stopwords
 from gensim import corpora, models, similarities
 
-# Use script by calling $ python linguist.py <command> <source>
 
-# -- globals and helpers -------------------------------------------------------------
-vocab = []
-freqs = nltk.FreqDist('')
-sentfreqs = []
+# ------------------------------------------------------------------------------------
+''' import the trained classes from /skills '''
+def getSentenceTokenizer():
+    with open('skills/init_sent_tok.pkl','rb') as infile:
+        st = pickle.load(infile)
+    return st
 
-# gets tokens and text in nltk text type
-def getwords(filename):
-    f = open(filename, 'r+')
-    raw_text = f.read()
-    words = nltk.word_tokenize(raw_text)    # tokenize raw text
-    text  = nltk.Text(words)                # nltk type text
-    return text
+def getChunkParser():
+    with open('skills/init_chunk.pkl','rb') as infile:
+        cp = pickle.load(infile)
+    return cp
 
-# gets all sentences in the text as list of tokens and text in nltk text type
-def getsents(filename):
-    f = open(filename, 'r+')
-    raw_text = f.read()
-    sents = nltk.sent_tokenize(raw_text)    # tokenize into sentences
-    sents_words = list(map(nltk.word_tokenize, sents)) # tokenize each sentence into words
-    # text = list(map(nltk.Text, sents_words))
-    # return text
-    return sents_words
+def getNameEntityDetector():
+    with open('skills/init_ner.pkl','rb') as infile:
+        ner = pickle.load(infile)
+    return ner
 
+def getTopicModelling():
+    with open('skills/init_tm.pkl','rb') as infile:
+        tm = pickle.load(infile)
+    return tm
 
-
-# -- analysis ------------------------------------------------------------------------
-
-# -- COMMAND vocab -------------------------------------------------------------------
-# Get the union of the vocabularies of all documents in the source folder
-def getvocab(src, args):
-    for filename in glob.glob(os.path.join(src, '*.txt')):
-        words = getwords(filename)
-        global vocab
-        vocab = sorted(set(vocab + sorted(set([w.lower() for w in words]))))
-                                 # get vocabulary and add to total vocabulary
-    return vocab
+def getQuestionClassifier():
+    with open('skills/init_qc.pkl','rb') as infile:
+        qc = pickle.load(infile)
+    return qc
 
 
+''' Get text from document or directory '''
+def getdocs(src):
+    if os.path.isdir(src):  
+        print("Collecting documents at directory " + src + " ...")
+        documents = []
+        for f in glob.glob(os.path.join(src, '*.txt')):
+            documents += [open(f, 'r+').read()]
+        return documents
+    if os.path.isfile(src):
+        print("Collecting document " + src + " ...")
+        return [open(src, 'r+').read()]
 
-# -- COMMAND freq --------------------------------------------------------------------
-# Get the total word frequencies for all documents in the source folder
-def getfrequency(src, args):
-    for filename in glob.glob(os.path.join(src, '*.txt')):
-        words = getwords(filename)
-        freq  = nltk.FreqDist([w.lower() for w in words])
-        global freqs
-        freqs = freqs + freq     # find frequencies and add to total frequency distribution
 
+
+######################################################################################
+''' Helper functions for NLP '''
+
+# Get the vocabulary of a document split in toks. 
+def vocab(toks):
+    voc = []
+    voc = sorted(set(voc + sorted(set([w.lower() for w in toks]))))
+    return voc
+
+
+# Get the word frequencies of a set of tokens.
+# The results of this function can be simply added for multiple texts
+def word_freq(toks):
+    freqs  = nltk.FreqDist([w.lower() for w in toks])
     return freqs
 
 
-
-# -- natural language processing -----------------------------------------------------
-
-# -- COMMAND chunk -------------------------------------------------------------------
-# COMMAND chunk
-grammar = '''
-NP:   {<DT>?<JJ.*>*<NN.*>*}
-VP:   {<VBP>?<VBZ>?<VBD>?<RB>?<V.*>}
-PREP: {<IN>}
-PRON: {<PR.*>}
-PP:   {<PREP>?<PRON>?<NP>}
-OBJ:  {<IN><NP|PP>*}
-'''
-
-def chunk(src, args):
-
-    for filename in glob.glob(os.path.join(src, '*.txt')):
-        sentences = getsents(filename)                       # 2D array of sentences
-        parts_of_speech = list(map(nltk.pos_tag, sentences)) # 2D array of tuples (word, pos)
-        chunker = nltk.RegexpParser(grammar)                 # will split words into groups as in grammar
-        chunks  = list(map(chunker.parse, parts_of_speech))
-        # for c in chunks:
-            # c.draw()
-
-        return chunks
+# Filter punctuation
+def filter_punct(toks):
+    words = list(filter(lambda w: w not in string.punctuation, toks)) 
+    return words
 
 
+# Filter out stop words and irrelevant parts of speech from a set of tokens
+def filter_stop_words(toks):
+    # List of parts of speech which are not stop words
+    # nltk.help.upenn_tagset() to see all
+    filter_pos = set([
+        'CD'  ,  # numeral: cardinal
+        'JJ'  ,  # ordinal adjective or numeral
+        'JJR' ,  # comparative adjective
+        'JJS' ,  # superlative adjective
+        'NN'  ,  # singular or mass common noun
+        'NNS' ,  # plural common noun
+        'NNP' ,  # singular proper noun
+        'NNPS',  # plural proper noun
+        'RBR' ,  # comparative adverb
+        'RBS' ,  # superlative adverb
+        'VB'  ,  # verb
+        'VBD' ,  # verb past tense
+        'VBG' ,  # verb present participle or gerund
+        'VBN' ,  # verb past participle
+        'VBP' ,  # verb present
+        'VBZ' ,  # verb present 3rd person singular
+    ])
+    # import the NLTK stopword corpus
+    # words can be seen here http://snowball.tartarus.org/algorithms/english/stop.txt
+    stopwords_corpus = stopwords.words('english')
 
-# -- COMMAND ldatokens ---------------------------------------------------------------
-# List of parts of speech which are not stop words
-# nltk.help.upenn_tagset() # to see all
-filter_pos = set([
-    # 'CD'  , # numeral: cardinal
-    'JJ'  ,  # ordinal adjective or numeral
-    'JJR' ,  # comparative adjective
-    'JJS' ,  # superlative adjective
-    'NN'  ,  # singular or mass common noun
-    'NNS' ,  # plural common noun
-    'NNP' ,  # singular proper noun
-    'NNPS',  # plural proper noun
-    # 'RB'  ,  # adverb
-    'RBR' ,  # comparative adverb
-    'RBS' ,  # superlative adverb
-    'VB'  ,  # verb
-    'VBD' ,  # verb past tense
-    'VBG' ,  # verb present participle or gerund
-    'VBN' ,  # verb past participle
-    'VBP' ,  # verb present
-    'VBZ' ,  # verb present 3rd person singular
-])
-# importing the NLTK stopword corpus
-# words can be seen here http://snowball.tartarus.org/algorithms/english/stop.txt
-stopwords_corpus = stopwords.words('english')
-
-# Helper to filter out stop words
-def filter_stop_words(text):
     # use the tagger to identify part of speech
-    parts_of_speech = nltk.pos_tag(text)
-    # filter out the pos of stop words
-    lda_parts_of_speech_filter = filter(lambda  pair : pair[1] in filter_pos, parts_of_speech)
-    # get the text in regular and all lowercase
+    parts_of_speech = nltk.pos_tag(toks)
+    # filter out the pos of irrelevant words
+    parts_of_speech_filter = filter(lambda  pair : pair[1] in filter_pos, parts_of_speech)
     # filter out the nltk stopwords corpus
-    lda_corpus_filter = filter(lambda pair : pair[0] not in stopwords_corpus, lda_parts_of_speech_filter)
-    lda_text  = [pair[0] for pair in lda_corpus_filter]
-    lda_lower = [word.lower() for word in lda_text]
+    corpus_filter = filter(lambda pair : pair[0] not in stopwords_corpus, parts_of_speech_filter)
 
-    return (lda_text, lda_lower)
+    # get the list of remaining tokens in original case and all lowercase
+    filtered_text  = [pair[0] for pair in corpus_filter]
+    filtered_lower = [word.lower() for word in filtered_text]
 
-
-# Remove the stop words and return the new text, vocabulary, and word frequence for a document
-def fileldatokens(filename):
-
-    text = [w.lower() for w in getwords(filename)]
-
-    (lda_text, lda_lower) = filter_stop_words(text)
-    global vocab
-    global freqs
-    vocab = sorted(set(vocab + lda_lower))
-    freq  = nltk.FreqDist(lda_lower)
-    freqs = freqs + freq
-
-    return (lda_text, vocab, freqs)
-
-# Remove the stop words and return the new text, vocabulary, and word frequences for all documents in the source folder
-def getldatokens(src, args):
-
-    lda_texts = []
-    for filename in glob.glob(os.path.join(src, '*.txt')):
-        text = [w.lower() for w in getwords(filename)]
-
-        (lda_text, lda_lower) = filter_stop_words(text)
-
-        global vocab
-        vocab = sorted(set(vocab + lda_lower))
-                                # get vocabulary and add to total vocabulary
-
-        freq  = nltk.FreqDist(lda_lower)
-        global freqs
-        freqs = freqs + freq    # find frequencies and add to total frequency distribution
-
-        lda_texts += lda_text
-
-    return (lda_texts, vocab, freqs)
+    return (filtered_text, filtered_lower)
 
 
 
-# -- COMMAND freqsentences -----------------------------------------------------------
-# Get the sentence frequency based on word frequency of all sentences in a document
-def filefreqsentences(filename):
-    words = getwords(filename)
-    sentences = getsents(filename)
-    num = 8
-    (lda_text, vocab, wordfreqs) = fileldatokens(filename)
-    # topics = extracttopicsupdate(filename,[0,8])
-    dictionary = corpora.Dictionary([lda_text])
-    corp = [dictionary.doc2bow(lda_text)]
+# Get the weight of each sentence in a text based on frequency 
+def sentence_freq(text, sents):
+    # get and filter words
+    words = nltk.word_tokenize(text)
+    words = filter_punct(words) 
+    (filtered_words, filtered_lower) = filter_stop_words(words)
+    
+    # get vocab and freqs
+    voc = vocab(filtered_lower)
+    freqs = word_freq(filtered_lower)
 
-    lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
+    # when summing frequencies per sentence thus use wordfreqs
+    sentfreqs = []
+    for sent in sents:
+        sentfreqs += [(sent, numpy.mean(list(map(lambda word: word.lower() in voc and freqs.get(word) or 0, sent))))]
 
-    # returns the topics as a dictionary of words and scores
-    topics = lsi_topics.print_topics(num)[0][1].split('+')
-    pairs = [topic.split('*') for topic in topics]
-    pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
-    topics = dict(pairs)
+    return sentfreqs
+
+
+
+#######################################################################################
+
+# -- COMMAND summary ---------------------------------------------------------------------
+'''
+When summing frequencies per sentence add bias from topics in that phrase
+    model: 0 for LDA, 1 for LSI
+    text : the content of a document in a string
+    sents: the sentences in a document - a list of lists of word and punctuation tokens
+    freqs: the output of sentence_frequency(text, sents)
+'''
+def augment_topics(model, text, sents, freqs):
+    num = 10 # TODO: choose a number that has a relevance!!!
+
+    if model == 0:
+        topics = lda2dict(lda([text], num))[1] # TODO: better idea?
+    else:
+        topics = lsi2dict(lsi([text], num))
 
     sentfreqs = []
-    for sent in sentences:
-        sentfreqs = sentfreqs + [(sent, numpy.mean(list(map(lambda word: word in vocab and wordfreqs.get(word) or 0, sent))) + 0)]
+    for sent,freq in freqs:
+        sentfreqs +=  [(reduce(lambda x,y: x + ' ' + y, sent),
+                        freq + sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))
+                      )]
+    return sentfreqs
 
-    return sorted(sentfreqs, key=lambda x:x[1], reverse=True)
 
-# Get the sentence frequency based on word frequency of all sentences of all documents in the source folder
-# <args> represents number of relevant sentences returned, all if 0
-def getfreqsentences(src, args):
-    # eliminate stop words, as they are not relevant when calculating the most relevant sentences
-    (lda_text, vocab, wordfreqs) = getldatokens(src, args)
-    topics = extracttopicsupdate(src,[0,8])
-    # print(topics)
-    for filename in glob.glob(os.path.join(src, '*.txt')):
-        words = getwords(filename)
-        sentences = getsents(filename) # 2D array of sentences
+'''
+When summing frequencies per sentence add bias from named entities in that phrase
+    model: 2 for NEs, 3 for Focused NEs
+    text : the content of a document in a string
+    sents: the sentences in a document - a list of lists of word and punctuation tokens
+    freqs: the output of sentence_frequency(text, sents)
+'''
+def augment_ne(model, text, sents, freqs):
+    # TODO(afterburner): make this happen
+    # ned =getNameEntityDetector()
+    # f = open(sys.argv[1])
+    # input_text = f.read()
+    # sent_freqs = filefreqsentences(sys.argv[1])
+    # named_entities = ned.chunks2ne(input_text)
+    # ned.chunks2ne(input_text)
+    # fne, rne = ned.clearnamedentities(named_entities, sent_freqs)
+    # print("Regular named entities: \n")
+    # print(named_entities)
+    # print("Focused named entities: \n")
+    # print(fne)
+    # print("Relevant named entities: \n")
+    # print(rne)e getsummary(src, args):
+    return []
 
-        # when summing frequencies per sentence thus use wordfreqs
-        # also add bias from topics in that phrase
-        global sentfreqs
-        for sent in sentences:
-            sentfreqs += [(reduce(lambda x,y: x + ' ' + y, sent),
-                numpy.mean(list(map(lambda word: word.lower() in vocab and wordfreqs.get(word) or 0, sent))) +
-                sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))
-            )]
 
-        # sort by relevance descending
-        sortedfreqs = sorted(sentfreqs, key=lambda x:x[1], reverse=True)
+'''
+Obtains a summary of each text in a directory or the text in a file, by choosing the
+sentences of the highest augmented frequency:
+The augmented frequency is calculated as the average word frequencies of the filtered 
+words in each sentence (as returned by sentence_freq), summed with a bias coming from
+the presence of topics, named entities, or both in the sentence.
 
-        if args == 0:
-            return sortedfreqs
-        else:
-            return list(islice(sortedfreqs, 10))
+    <src> is a file or directory
+    <args[0]> can be 0 (LDA), 1 (LSI), 2 (NEs), 3 (Focused NEs), default behaviour is LDA.
+    <args[1]> must be an integer representing the number of topics to extract, default number is 10.
+'''
+def getsummary(src, args):
+    if len(args) < 2:
+        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        sys.exit(0)
+
+    model = args[0]
+    num = args[1]
+    docs = getdocs(src)    
+
+    st = getSentenceTokenizer()
+
+    summaries = []
+    for doc in docs:
+        sents = st.text2sents(doc)
+        freqs = sentence_freq(doc, sents)
+        if model == 0 or model == 1:
+            freqs = augment_topics(model, doc, sents, freqs)
+        elif model == 2 or model == 3:
+            freqs = augment_nes(model, doc, sents, freqs)
+        sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
+
+        min_freq = sortedfreqs[num][1]
+        summary = [f[0] for f in list(filter(lambda f: f[1] >= min_freq, freqs))]
+        
+        summaries += [summary]
+    
+    del st
+
+    return summaries
+
+
+
+
+# -- COMMAND entities --------------------------------------------------------------------
+'''
+Finds the named entities after tagging and chunking the sentence with the trained Name
+Entity Detector. For each document it returns a triple consisting of the regular named
+entities found with the classifier, and focused and relevant name entities found with 
+sentence frequency measurements.
+
+    <src> is a file or directory
+    <args[0]> can be 0 (chunk-based detection) or 1 (text-based detection).
+    <args[1]> can be 0 (NEs), 1 (FNEs), 2 (RNEs), 3 (all)
+'''
+
+def getentities(src, args):
+    if len(args) < 2:
+        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        sys.exit(0)
+
+    model = args[0]
+    etype = args[1]
+    docs  = getdocs(src)    
+
+    st  = getSentenceTokenizer()
+    ch  = getChunkParser()
+    ner = getNameEntityDetector()
+
+    entities = []
+    for doc in docs:
+        sents  = st.text2sents(doc)
+        if model == 0:
+            chunks = ch.sents2chunks(sents)
+            nes    = ner.chunks2ne(chunks)
+        elif model == 1:
+            nes    = ner.text2ne(doc)
+        freqs  = sentence_freq(doc, sents)
+        fnes, rnes = ner.clearnamedentitites(nes, freqs)
+
+        entities += [(nes, fnes, rnes)]
+         
+    del st
+    del ch
+    del ner
+   
+    if etype >= 4:
+        return entities
+    elif etype >= 0:
+        return [e[etype] for e in entities]  
+
 
 
 
 # -- COMMAND topics ----------------------------------------------------------------------
-# Extract topics.
-# <src> must be a directory, <args[0]> can be 0 (initial) or 1 (update), default behaviour is initial.
-# <args[1]> must be an integer representing the number of topics to extract, default number is 10.
+# TODO: use the trained class
+
+'''
+Extracts topics by either LDA or LSI model, depending on args.
+    <src> is a file or directory
+    <args[0]> can be 0 (LDA) or 1 (LSI), default behaviour is LDA.
+    <args[1]> must be an integer representing the number of topics to extract, default number is 10.
+'''
+
 def gettopics(src, args):
+    if len(args) < 2:
+        print("Incorrect arguments: expected \n linguist.py topics <src> <model> <num>")
+        sys.exit(0)
+
+    docs = getdocs(src)    
+
     if args[0] == 1:
-        print("Update")
-        return extracttopicsupdate(src, args)
+        print("LSI model topics:")
+        return lsi(docs, args[1])
     else:
-        print("Initial")
-        return extracttopicsinitial(src, args)
+        print("LDA model topics:")
+        return lda(docs, args[1])
 
-def extracttopicsupdate(src, args):
-    (lda_text, vocab, freqs) = getldatokens(src, args)
-    num = args[1]
 
-    dictionary = corpora.Dictionary([lda_text])
-    corp = [dictionary.doc2bow(lda_text)]
+def lsi2dict(topics):
+    topics = topics[0][1].split('+')
+    pairs  = [topic.split('*') for topic in topics]
+    pairs  = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
+    return dict(pairs)
+
+def lda2dict(topics):
+    dicts = []
+    for i in range(len(topics)):
+        topic = topics[i][1].split('+') 
+        pairs = [t.split('*') for t in topic]
+        pairs = [(''.join(list(filter(lambda c:c not in " ", pair[1]))), float(pair[0])) for pair in pairs]
+        dicts += [dict(pairs)]
+
+    return dicts
+
+
+def lsi(docs, num):
+    # TODO: chunk mwes and collocations if necessary.
+    # tokenize each doc, filter punctuation and stop words
+    docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
+    print(docs)
+    filtered = [f[1] for f in list(map(filter_stop_words, docs))]
+
+    # create Gensim dictionary and corpus    
+    dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
+    corp = [dictionary.doc2bow(reduce(add, filtered))]
 
     lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
 
     # returns the topics as a dictionary of words and scores
-    topics = lsi_topics.print_topics(num)[0][1].split('+')
-    pairs = [topic.split('*') for topic in topics]
-    pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
-    return dict(pairs)
+    return lsi_topics.print_topics(num)
 
 
-def extracttopicsinitial(src, args):
-    (lda_text, vocab, freqs) = getldatokens(src, args)
-    num = args[1]
+def lda(docs, num):
+    # TODO: chunk mwes and collocations if necessary.
+    # tokenize each doc, filter punctuation and stop words
+    docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
+    filtered = [f[1] for f in list(map(filter_stop_words, docs))]
 
-    dictionary = corpora.Dictionary([lda_text])
-    corp = [dictionary.doc2bow(lda_text)]
+    # create Gensim dictionary and corpus    
+    dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
+    corp = [dictionary.doc2bow(reduce(add, filtered))]
 
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
-
-    # print(lda_topics.print_topics(num))
-    return lda_topics
+    return lda_topics.print_topics(num)
 
 
 
-# -----------------------------------------------------------------------------------
-# commands = {
-#     'vocab': getvocab,
-#     'freq': getfrequency,
-#     'freqsentences': getfreqsentences,
-#     'chunk': chunk,
-#     'ldatokens': getldatokens,
-#     'topics': gettopics,
-# }
-#
-# if len(sys.argv) <= 2:
-#     print("the linguist expects the following command \n linguist.py <command> <src>")
-#     sys.exit(0)
-# if len(sys.argv) > 2:
-#     com  = sys.argv[1]
-#     src  = sys.argv[2]
-#     args = 0
-#     if len(sys.argv) > 3:
-#         args = int(sys.argv[3]), int(sys.argv[4])
-#     if not os.path.isdir(src):
-#         print("<src> is not a directory")
-#         sys.exit(0)
-#     print("Executing linguist " + com + " on directory " + src + " ...")
-#     if commands.get(com, False):
-#         print(commands[com](src, args))
-#     else:
-#         print("<command> can be \n vocab \n freq \n freqsentences \n ldatokens \n chunk")
-#         sys.exit(0)
+
+# -- COMMAND relationships ---------------------------------------------------------------
+def getrelationships(src, args):
+    return []
+
+
+
+
+##########################################################################################
+
+commands = {
+    'summary': getsummary,
+    'entities': getentities,
+    'topics': gettopics,
+    'relationships': getrelationships,
+}
+
+if len(sys.argv) <= 2:
+    print("the linguist expects the following command \n linguist.py <command> <src>")
+    sys.exit(0)
+if len(sys.argv) > 2:
+    com  = sys.argv[1]
+    src  = sys.argv[2]
+    args = 0
+    if len(sys.argv) > 3:
+        args = int(sys.argv[3]), int(sys.argv[4])
+
+    print("Executing linguist " + com + " on " + src + " ...")
+    if commands.get(com, False):
+        print(commands[com](src, args))
+    else:
+        print("<command> can be \n summary \n entities \n topics \n relationships")
+        sys.exit(0)
+
