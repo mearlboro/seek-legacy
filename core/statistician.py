@@ -25,7 +25,6 @@ from nltk.tokenize import MWETokenizer
 from gensim.corpora import WikiCorpus, wikicorpus, TextCorpus, MmCorpus
 from nltk.tag.stanford import StanfordNERTagger
 
-
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 '''
 "NLP with Python" book, chapter 6.2
@@ -412,31 +411,48 @@ text2ne(text):
     returns: a list of tuples of the format (NE, TYPE)
 '''
 
+
+class NERComboTagger(StanfordNERTagger):
+
+  def __init__(self, *args, **kwargs):
+    self.stanford_ner_models = kwargs['stanford_ner_models']
+    kwargs.pop("stanford_ner_models")
+    super(NERComboTagger,self).__init__(*args, **kwargs)
+
+  @property
+  def _cmd(self):
+    return ['-mx7g',
+            'edu.stanford.nlp.ie.NERClassifierCombiner',
+            '-loadClassifier',
+            self.stanford_ner_models,
+            '-textFile',
+            self._input_file_path,
+            '-outputFormat',
+            self._FORMAT,
+            '-tokenizerFactory',
+            'edu.stanford.nlp.process.WhitespaceTokenizer',
+            '-tokenizerOptions',
+            '\"tokenizeNLs=false\"']
+
 class NameEntityDetector():
     def __init__(self):
         self.chunker = ChunkParser()
-        self.stanford_tagger = nltk.tag.StanfordNERTagger('english.all.3class.distsim.crf.ser.gz')
-        self.name_tagger = nltk.tag.StanfordNERTagger('seek-model.ser.gz')
-        self.country_tagger = nltk.tag.StanfordNERTagger('seek-model-countries.ser.gz')
+        classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek4.ser.gz'
+        self.name_tagger = NERComboTagger(classifier_path1,stanford_ner_models=classifier_path1)
+        self.name_tagger._stanford_jar = os.environ.get("CLASSPATH")
 
     def text2ne(self, input_text):
         split_text = re.split("\,?\.?\s+", input_text)
-        named_entities = dict(self.stanford_tagger.tag(split_text))
-        person_entities = dict(self.name_tagger.tag(split_text))
-        country_entities = dict(self.country_tagger.tag(split_text))
-        return (set(filter(lambda x: x[1] != 'O', named_entities.items())),
-                set(filter(lambda x: x[1] != 'O', person_entities.items())),
-                set(filter(lambda x: x[1] != 'O', country_entities.items())))
-
+        named_entities = dict(self.name_tagger.tag(split_text))
+        return set(filter(lambda x: x[1] != 'O', named_entities.items()))
     def chunks2ne(self, input_text):
         chunked_sents = self.chunker.text2chunks(input_text)
-        split_text = re.split("\,?\.?\s+", input_text)
-        named_entities = dict(self.stanford_tagger.tag(split_text))
-        person_entities = dict(self.name_tagger.tag(split_text))
-        country_entities = dict(self.country_tagger.tag(split_text))
-        print(named_entities)
-        print(person_entities)
-        print(country_entities)
+        split_text = re.split("\,?\.?\s?\.?\,?", input_text)
+        named_entities = dict(self.name_tagger.tag(split_text))
+        # named_entities = dict(filter(lambda x: x[1] != 'O', named_entities.items()))
+        person_entities = dict(filter(lambda x: x[1] == 'PERSON', named_entities.items()))
+        organization_entities = dict(filter(lambda x: x[1] == 'ORGANIZATION', named_entities.items()))
+        location_entities = dict(filter(lambda x: x[1] == 'LOCATION', named_entities.items()))
         # Create a list to store a more complete mapping of NEs
         answered = []
         for chunked_sent in chunked_sents:
@@ -444,81 +460,58 @@ class NameEntityDetector():
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
-                stanford_category = None
-                person_category = None
-                country_category = None
-                # ent_key = ""
-                # ent_key = ' '.join(list(map(lambda t: t[0] + " ", subtree.leaves())))
-                ent_key = list(map(lambda t: t[0] + " ", subtree.leaves()))
-                for word in ent_key:
-                    # print(word)
-                    if (word in named_entities.keys()):
-                        stanford_category = named_entities[word]
-                    if (word in person_entities.keys()):
-                        person_category = person_entities[word]
-                    if (word in country_entities.keys()):
-                        country_category = country_entities[word]
-                # print(stanford_category)
-                # print(person_category)
-                # print(country_category)
-                # print(ent_key)
-                # tags = nltk.FreqDist(list(map(lambda x: x[1], subtree.leaves()[:-1])))
-                # most_common_tag = None
-                # if(len(tags) > 0):
-                #     most_common_tag = tags.max()
-                #
+                # ent_key = ' '.join(set(map(lambda t: t[0] + " ", subtree.leaves())))
+                ent_key = []
+                for t in subtree.leaves():
+                    if (t[0] not in ent_key):
+                        ent_key.append(t[0])
+
+                # ent_key = ' '.join(ent_key)
+
+                # category = None
                 # for leaf in subtree.leaves()[:-1]:
                 #     if (leaf[0] in named_entities):
                 #         ent_key += leaf[0] + " "
                 #         if (leaf[0] in named_entities.keys()):
-                #             stanford_category = named_entities[leaf[0]]
-                #         if (leaf[0] in person_entities.keys()):
-                #             person_category = person_entities[leaf[0]]
+                #             category = named_entities[leaf[0]]
                 # last_leaf = subtree.leaves()[-1]
-                # if (last_leaf[0] in named_entities):
-                #     if (most_common_tag != None and last_leaf[1] == most_common_tag):
-                #     # if (last_leaf[1] == 'NP'):
+                # if (last_leaf[0] in named_entities.keys()):
+                #     if (category != named_entities[last_leaf[0]] and named_entities[last_leaf[0]] != 'PERSON'):
                 #         ent_key += last_leaf[0]
-                #         if (last_leaf[0] in named_entities.keys()):
-                #             stanford_category = named_entities[last_leaf[0]]
-                #         if (last_leaf[0] in person_entities.keys()):
-                #             person_category = person_entities[last_leaf[0]]
-                # if (stanford_category is None):
-                #     stanford_category = 'O'
-                # if (person_category is None):
-                #     person_category = 'O'
-                # if (stanford_category != 'O'):
-                #     answered.append((ent_key, stanford_category))
-                # else:
-                #     answered.append((ent_key, person_category))
-        # return set(filter(lambda x: x[1] != 'O', answered))
+                #         category = named_entities[last_leaf[0]]
 
-    def clearnamedentities(self, named_entities, sent_freqs):
-        focused_named_entities = []
-        relevant_named_entities = []
-        for named_entity in named_entities:
+                if (all(word in ent_key for word in person_entities.keys())):
+                    ent_key.append(' '.join(ent_key))
+                    answered.append((ent_key, "PERSON"))
+                if (any(word in ent_key for word in organization_entities.keys())):
+                    answered.append((ent_key, "ORGANIZATION"))
+                if (any(word in ent_key for word in location_entities.keys())):
+                    answered.append((ent_key, "LOCATION"))
+        # print(answered)
+        return list(filter(lambda x: x[1] != 'O' and x[1] != None, answered))
+
+    def summary(self, named_entities, sent_freqs):
+        summary = []
+        pers_org = list(filter(lambda x: x[1] != "LOCATION", named_entities))
+        for named_entity in pers_org:
             for sent_freq in sent_freqs:
                 if (named_entity[0] in sent_freq[0]):
-                    focused_named_entities.append(named_entity)
-        for ne in set(focused_named_entities):
-            for cne in named_entities:
-                if (ne[0] in cne[0]):
-                    relevant_named_entities.append(cne)
-        return (set(focused_named_entities), set(relevant_named_entities))
+                    summary.append(sent_freq[0])
+        # return focused_named_entities
+        return summary
 
-# ned = NameEntityDetector()
-# f = open(sys.argv[1])
-# input_text = f.read()
-# sent_freqs = filefreqsentences(sys.argv[1])
-# named_entities = ned.chunks2ne(input_text)
-# ned.chunks2ne(input_text)
-# fne, rne = ned.clearnamedentities(named_entities, sent_freqs)
-# print("Regular named entities: \n")
-# print(named_entities)
-# print("Focused named entities: \n")
+ned = NameEntityDetector()
+f = open(sys.argv[1])
+input_text = f.read()
+sent_freqs = list(filter(lambda t: t[1] > 0.3, filefreqsentences(sys.argv[1])))
+named_entities = ned.chunks2ne(input_text)
+summary = ned.summary(named_entities, sent_freqs)
+print("Regular named entities:")
+print(named_entities)
+print("\n")
+print(summary)
+# print("Focused named entities:")
 # print(fne)
-# print("Relevant named entities: \n")
-# print(rne)
 
 
 
