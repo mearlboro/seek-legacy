@@ -31,8 +31,8 @@ cwd=$(pwd)
 cd $NLTK_DATA
 
 # One time install run for stanford
-# wget http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip
-# curl http://nlp.stanford.edu/software/stanford-ner-2014-06-16.zip > stanford-ner.zip
+# wget http://nlp.stanford.edu/software/stanford-ner-2015-04-20.zip
+# curl http://nlp.stanford.edu/software/stanford-ner-2015-04-20.zip > stanford-ner.zip
 # unzip stanford-ner.zip -d stanford-ner
 # rm -f stanford-ner.zip
 
