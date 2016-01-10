@@ -36,8 +36,9 @@ cd $NLTK_DATA
 # unzip stanford-ner.zip -d stanford-ner
 # rm -f stanford-ner.zip
 
-export CLASSPATH="$NLTK_DATA/stanford-ner/stanford-ner.jar"
-export STANFORD_MODELS="$NLTK_DATA/stanford-ner/classifiers"
+export ST="$NLTK_DATA/stanford-ner"
+export CLASSPATH="$ST/stanford-ner.jar:$ST/lib/joda-time.jar:$ST/lib/jollyday-0.4.7.jar:$ST/lib/stanford-ner-resources.jar"
+export STANFORD_MODELS="$ST/classifiers"
 
 ## download nltk trainer and prepare the NLTK taggers and chunkers used by seek
 ## warning: slow

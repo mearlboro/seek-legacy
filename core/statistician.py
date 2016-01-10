@@ -437,36 +437,21 @@ class NameEntityDetector():
         chunked_sents = self.chunker.text2chunks(input_text)
         split_text = re.split("\,?\.?\s?\.?\,?", input_text)
         named_entities = dict(self.name_tagger.tag(split_text))
-        # named_entities = dict(filter(lambda x: x[1] != 'O', named_entities.items()))
+        named_entities = dict(filter(lambda x: x[1] != 'O', named_entities.items()))
         person_entities = dict(filter(lambda x: x[1] == 'PERSON', named_entities.items()))
         organization_entities = dict(filter(lambda x: x[1] == 'ORGANIZATION', named_entities.items()))
         location_entities = dict(filter(lambda x: x[1] == 'LOCATION', named_entities.items()))
         # Create a list to store a more complete mapping of NEs
         answered = []
         for chunked_sent in chunked_sents:
-            # print(chunked_sent)
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
-                # ent_key = ' '.join(set(map(lambda t: t[0] + " ", subtree.leaves())))
                 ent_key = []
+                # Create Set like list to preserve order
                 for t in subtree.leaves():
                     if (t[0] not in ent_key):
                         ent_key.append(t[0])
-
-                # ent_key = ' '.join(ent_key)
-
-                # category = None
-                # for leaf in subtree.leaves()[:-1]:
-                #     if (leaf[0] in named_entities):
-                #         ent_key += leaf[0] + " "
-                #         if (leaf[0] in named_entities.keys()):
-                #             category = named_entities[leaf[0]]
-                # last_leaf = subtree.leaves()[-1]
-                # if (last_leaf[0] in named_entities.keys()):
-                #     if (category != named_entities[last_leaf[0]] and named_entities[last_leaf[0]] != 'PERSON'):
-                #         ent_key += last_leaf[0]
-                #         category = named_entities[last_leaf[0]]
 
                 if (all(word in ent_key for word in person_entities.keys())):
                     ent_key.append(' '.join(ent_key))
@@ -475,33 +460,17 @@ class NameEntityDetector():
                     answered.append((ent_key, "ORGANIZATION"))
                 if (any(word in ent_key for word in location_entities.keys())):
                     answered.append((ent_key, "LOCATION"))
-        # print(answered)
         return list(filter(lambda x: x[1] != 'O' and x[1] != None, answered))
 
     def summary(self, named_entities, sent_freqs):
         summary = []
         pers_org = list(filter(lambda x: x[1] != "LOCATION", named_entities))
+        sent_freqs = list(filter(lambda t: t[1] > 0.3, filefreqsentences(sys.argv[1])))
         for named_entity in pers_org:
             for sent_freq in sent_freqs:
                 if (named_entity[0] in sent_freq[0]):
                     summary.append(sent_freq[0])
-        # return focused_named_entities
         return summary
-
-ned = NameEntityDetector()
-f = open(sys.argv[1])
-input_text = f.read()
-sent_freqs = list(filter(lambda t: t[1] > 0.3, filefreqsentences(sys.argv[1])))
-named_entities = ned.chunks2ne(input_text)
-summary = ned.summary(named_entities, sent_freqs)
-print("Regular named entities:")
-print(named_entities)
-print("\n")
-print(summary)
-# print("Focused named entities:")
-# print(fne)
-
-
 
 # -- QUESTION CLASSIFIER --------------------------------------------------
 '''
@@ -569,5 +538,5 @@ class QuestionClassifier():
 
 
     # Classify questions
-    def classify(self, toks, nes):    
+    def classify(self, toks, nes):
         return self.classifier.classify(self.__question_features(toks, nes))
