@@ -35,6 +35,17 @@
   color: orange;
 }
 
+iframe {
+  border: none;
+  width: 75%;
+  height: 1000px;
+}
+
+#result {
+  font-size: 1.5em;
+}
+
+
 /* Base styles (custom + via Skeleton)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
