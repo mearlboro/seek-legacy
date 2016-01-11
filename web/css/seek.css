@@ -92,10 +92,83 @@ body {
 /* Animations 
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 #eye {
-  background-image: url("../images/seek.png");
   background-repeat: no-repeat;
   background-position: 50% 50%;
+  -webkit-animation-duration: 1s;
+  -webkit-animation-timing-function: linear;
+  -moz-animation-duration: 1s;
+  -moz-animation-timing-function: linear;
+  animation-duration: 1s;
+  animation-timing-function: linear;
 }
+
+/* animation */
+@-keyframes neutral {
+    0% { } 
+    100% { background-image: url("../images/seek.png"); }
+}
+@-moz-keyframes neutral {
+    0% { } 
+    100% { background-image: url("../images/seek.png"); }
+}
+@-webkit-keyframes neutral {
+    0% { } 
+    100% { background-image: url("../images/seek.png"); }
+}
+
+@-keyframes happy {
+    0% { } 
+    100% { background-image: url("../images/seek-happy.png"); }
+}
+@-moz-keyframes happy {
+    0% { } 
+    100% { background-image: url("../images/seek-happy.png"); }
+}
+@-webkit-keyframes happy {
+    0% { } 
+    100% { background-image: url("../images/seek-happy.png"); }
+}
+
+@-keyframes sad {
+    0% { } 
+    100% { background-image: url("../images/seek-sad.png"); }
+}
+@-moz-keyframes sad {
+    0% { } 
+    100% { background-image: url("../images/seek-sad.png"); }
+}
+@-webkit-keyframes sad {
+    0% { } 
+    100% { background-image: url("../images/seek-sad.png"); }
+}
+
+@-keyframes thinking {
+    0% { } 
+    100% { background-image: url("../images/seek-thinking.png"); }
+}
+@-moz-keyframes thinking {
+    0% { } 
+    100% { background-image: url("../images/seek-thinking.png"); }
+}
+@-webkit-keyframes thinking {
+    0% { } 
+    100% { background-image: url("../images/seek-thinking.png"); }
+}
+
+/* classes for each background */
+.neutral {
+  background-image: url("../images/seek.png");
+}
+.happy {
+  background-image: url("../images/seek-happy.png");
+}
+.sad {
+  background-image: url("../images/seek-sad.png");
+}
+.thinking {
+  background-image: url("../images/seek-thinking.png");
+}
+
 
 /* Typography (via Skeleton)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
