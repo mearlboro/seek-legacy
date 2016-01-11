@@ -422,9 +422,8 @@ class NERComboTagger(StanfordNERTagger):
 
 class NameEntityDetector():
     def __init__(self):
-        self.chunker = ChunkParser()
-        classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek5.ser.gz'
-        self.name_tagger = NERComboTagger(classifier_path1,stanford_ner_models=classifier_path1)
+        self.classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek5.ser.gz'
+        self.name_tagger = NERComboTagger(self.classifier_path1,stanford_ner_models=self.classifier_path1)
         self.name_tagger._stanford_jar = os.environ.get("CLASSPATH")
 
     def text2ne(self, input_text):
@@ -442,6 +441,7 @@ class NameEntityDetector():
         # Create a list to store a more complete mapping of NEs
         answered = []
         for chunked_sent in chunked_sents:
+            print(chunked_sent)
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
@@ -452,7 +452,9 @@ class NameEntityDetector():
                         ent_key.append(t[0])
 
                 if (all(word in ent_key for word in person_entities.keys())):
-                    ent_key.append(' '.join(ent_key))
+                    joined = ' '.join(ent_key)
+                    if (joined not in ent_key):
+                        ent_key.append(joined)
                     answered.append((ent_key, "PERSON"))
                 if (any(word in ent_key for word in organization_entities.keys())):
                     answered.append((ent_key, "ORGANIZATION"))
@@ -460,15 +462,20 @@ class NameEntityDetector():
                     answered.append((ent_key, "LOCATION"))
         return list(filter(lambda x: x[1] != 'O' and x[1] != None, answered))
 
-    def summary(self, named_entities, sent_freqs):
-        summary = []
-        pers_org = list(filter(lambda x: x[1] != "LOCATION", named_entities))
-        sent_freqs = list(filter(lambda t: t[1] > 0.3, filefreqsentences(sys.argv[1])))
-        for named_entity in pers_org:
-            for sent_freq in sent_freqs:
-                if (named_entity[0] in sent_freq[0]):
-                    summary.append(sent_freq[0])
-        return summary
+    def file2ne(self, src):
+        p = subprocess.Popen(["java",
+                                "-mx1g",
+                                "edu.stanford.nlp.ie.NERClassifierCombiner",
+                                "-loadClassifier",
+                                self.classifier_path1,
+                                "-textFile",
+                                src,
+                                "-outputFormat",
+                                "tsv"], stdout=subprocess.PIPE)
+        answer = []
+        for l in p.stdout.read():
+            answer.append(l + "\n")
+        print(list(filter(lambda x: x[1] != 'O', answer)))
 
 # -- QUESTION CLASSIFIER --------------------------------------------------
 '''
