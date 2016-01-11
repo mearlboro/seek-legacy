@@ -10,6 +10,9 @@ input {
   background-color: transparent;
   border-color: transparent;
 }
+input:focus {
+  outline: none;
+}
 input[type="text"],
 .form-control {
   width: 42rem;

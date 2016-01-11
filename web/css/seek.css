@@ -22,6 +22,18 @@
   clear: both;
 }
 
+#eye {
+  margin-top: 5%;
+}
+
+#query {
+  padding-top: 7.5%;
+  font-size: 2em;
+}
+
+:placeholder-shown {
+  color: orange;
+}
 
 /* Base styles (custom + via Skeleton)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
@@ -36,9 +48,7 @@ html {
 }
 
 body {
-  background-image: url("../images/homepage.png");
-  background-repeat: no-repeat;
-
+  background: transparent;
   font-size: 1.5em;
   line-height: 1.6;
   font-weight: 400;
