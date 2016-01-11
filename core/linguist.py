@@ -282,24 +282,12 @@ def getentities(src, args):
             nes    = ner.chunks2ne(doc, chunks)
         elif model == 1:
             nes    = ner.text2ne(doc)
-        # freqs  = sentence_freq(doc, sents)
-        # fnes, rnes = ner.clearnamedentitites(nes, freqs)
-
-        # entities += [(nes, fnes, rnes)]
-        entities = nes
 
     del st
     del ch
     del ner
 
-    if etype >= 4:
-        return entities
-    elif etype >= 0:
-        return [e for e in entities]
-        # return [e[etype] for e in entities]
-
-
-
+    return nes
 
 # -- COMMAND topics ----------------------------------------------------------------------
 # TODO: use the trained class
