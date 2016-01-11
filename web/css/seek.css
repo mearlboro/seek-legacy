@@ -11,6 +11,8 @@
 /* Table of Contents
 ––––––––––––––––––––––––––––––––––––––––––––––––––
  - base styles
+ - responsive styles
+ - keyframe animations for mood
  - typography
  - grid
  - spacing
@@ -23,7 +25,9 @@
 }
 
 #eye {
-  margin-top: 5%;
+    margin-top: 5%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #query {
@@ -69,6 +73,40 @@ body {
   text-align: center;
 }
 
+
+/* Responsive 
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+@media (min-width: 600px) {
+  #eye {
+    height: 425px;
+    width: 425px;
+  }
+}
+@media (max-width: 599px) {
+  #eye {
+    width: 60%;
+    height: 350px;
+    background-size: 100% auto;
+  }
+}
+@media (max-width: 1228px) {
+  #question {
+    width: 100% !important;
+  }
+  .main-input {
+    width: 100% !important;
+    text-align: center;
+  }
+}
+
+
+/* Animations 
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+#eye {
+  background-image: url("../images/seek.png");
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+}
 
 /* Typography (via Skeleton)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */

@@ -38,11 +38,10 @@
 
     <section id="home">
 
-      <div class="row" id="eye">
+      <div class="row">
         <!-- Seek Almighty -->
         <div id="eyewrappper"> <!-- will be resizing -->
-          <div class="col-lg-12"><img src="images/seek.png"/>
-            <div id="eyemask"></div> <!-- colours for loading and feedback -->
+          <div class="col-lg-12"><div id="eye" class="neutral"></div>
           </div>
         </div>
       </div>
@@ -56,8 +55,9 @@
 
         <div class="col-lg-4 col-lg-push-2" >
           <!-- input box -->
-          <span class="input-group">
-            <input type="text" id="textbox" placeholder="What would you like to know?">
+          <span class="input-group" id="question">
+            <input type="text" class="main-input" placeholder="What would you like to know?">
+            <input type="submit" class="hide" id="hiddensubmit">
           </span>
         </div>
       </div>
