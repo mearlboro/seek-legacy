@@ -36,7 +36,7 @@
 }
 
 :placeholder-shown {
-  color: orange;
+  color: transparent;
 }
 
 iframe {
@@ -74,7 +74,7 @@ body {
 }
 
 
-/* Responsive 
+/* Responsive
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 @media (min-width: 600px) {
   #eye {
@@ -100,7 +100,7 @@ body {
 }
 
 
-/* Animations 
+/* Animations
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 #eye {
   background-image: url("../images/seek.png");
