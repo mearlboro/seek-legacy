@@ -45,16 +45,16 @@
         </div>
       </div>
       <!-- only for proof of concept, to be removed -->
-      <button id="neutral"></button>
-      <button id="happy"></button>
-      <button id="sad"></button>
-      <button id="thinking"></button>
+      <button id="neutral"  onclick="changeMood('neutral')"></button>
+      <button id="happy"    onclick="changeMood('happy')"></button>
+      <button id="sad"      onclick="changeMood('sad')"></button>
+      <button id="thinking" onclick="changeMood('thinking')"></button>
 
       <div class="row" id="query">
         <div class="col-lg-2 col-lg-push-2">
           <!-- two images as buttons -->
           <span class="btn btn-lg fa fa-upload"></span>
-          <span class="btn btn-lg fa fa-microphone"></span>
+          <span class="btn btn-lg fa fa-microphone" id="input-toggle" onclick="toggleInput()"></span>
         </div>
 
         <div class="col-lg-4 col-lg-push-2" >

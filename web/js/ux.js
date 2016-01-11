@@ -19,11 +19,16 @@ function changeMood(mood) {
     eye.style.animationName       = mood; 
 }
 
-/* TODO: replace these with calls from the server */
-document.getElementById('neutral').onclick  = changeMood('neutral');
-document.getElementById('happy').onclick    = changeMood('happy');
-document.getElementById('sad').onclick      = changeMood('sad');
-document.getElementById('thinking').onclick = changeMood('thinking');
 
-
+/* toggle for mic/keyboard button */
+function toggleInput() {
+    but = $('#input-toggle').get(0);
+    classList = but.className.split(' ');
+    if (classList[3] == 'fa-microphone') {
+        but.className = 'btn btn-lg fa fa-keyboard-o';
+    }
+    if (classList[3] == 'fa-keyboard-o') {
+        but.className = 'btn btn-lg fa fa-microphone';
+    }
+}
 
