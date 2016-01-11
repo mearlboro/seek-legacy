@@ -36,8 +36,19 @@
 }
 
 :placeholder-shown {
-  color: orange;
+  color: transparent;
 }
+
+iframe {
+  border: none;
+  width: 75%;
+  height: 1000px;
+}
+
+#result {
+  font-size: 1.5em;
+}
+
 
 /* Base styles (custom + via Skeleton)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
@@ -63,7 +74,7 @@ body {
 }
 
 
-/* Responsive 
+/* Responsive
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 @media (min-width: 600px) {
   #eye {
@@ -89,7 +100,7 @@ body {
 }
 
 
-/* Animations 
+/* Animations
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 #eye {
   background-repeat: no-repeat;
