@@ -344,19 +344,34 @@ class ChunkParser():
 
 
 # -- TOPIC MODELLING ----------------------------------------------------------
-
+''' 
+The TopicModelling class uses the latest Wikipedia dump as the main corpus and 
+dictionary, and for the intiial distribution of topics.
+Uncomment the 'Wikipedia training' section whenever the corpus updates, then 
+re-run init.py to refresh the pickle.
+'''
 class TopicModelling():
     def __init__(self):
-        print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")
         wiki_src = '../raw/wiki/enwiki-articles.xml.bz2'
+        dict_src = '../raw/wiki/parsed/wiki_dict.dict'
+        corp_src = '../raw/wiki/parsed/wiki_corpus.mm'
 
-        # load the corpus of documents in the wikipedia archive and save parsed files to disk
-        self.wiki_corpus = WikiCorpus(wiki_src)
-#        self.wiki_dictionary = self.wiki_corpus.dictionary
-#        self.wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
-        MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm", self.wiki_corpus)
-
-        print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")
+        # -------------------------------------- Wikipedia training ------------------------------ #
+        #                                                                                          #
+        # print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")  #
+        #                                                                                          #
+        # # load the corpus of documents in the wikipedia archive and save parsed files to disk    #
+        # self.wiki_corpus = WikiCorpus(wiki_src)                                                  #
+        # self.wiki_dictionary = self.wiki_corpus.dictionary                                       #
+        # self.wiki_dictionary.save(dict_src)                                                      #
+        # MmCorpus.serialize(corp_src, self.wiki_corpus)                                           #
+        #                                                                                          #
+        # print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")     #
+        # ---------------------------------------------------------------------------------------- #
+        
+        # Working with persisted corpus and dictionary
+        self.wiki_corpus     = MmCorpus(corp_src)         # Revive a corpus
+        self.wiki_dictionary = Dictionary.load(dict_src)  # Load a dictionary
 
     # extract topics with lda
     # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
@@ -382,6 +397,7 @@ class TopicModelling():
         pairs = [topic.split('*') for topic in topics]
         pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
         return dict(pairs)
+
 
 
 
@@ -429,7 +445,7 @@ class NameEntityDetector():
     def text2ne(self, input_text):
         split_text = re.split("\,?\.?\s+", input_text)
         named_entities = dict(self.name_tagger.tag(split_text))
-        return set(filter(lambda x: x[1] != 'O', named_entities.items()))
+        return list(filter(lambda x: x[1] != 'O', named_entities.items()))
 
     def chunks2ne(self, input_text, chunked_sents):
         split_text = re.split("\,?\.?\s?\.?\,?", input_text)
@@ -441,7 +457,6 @@ class NameEntityDetector():
         # Create a list to store a more complete mapping of NEs
         answered = []
         for chunked_sent in chunked_sents:
-            print(chunked_sent)
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
@@ -477,6 +492,9 @@ class NameEntityDetector():
             answer.append(l + "\n")
         print(list(filter(lambda x: x[1] != 'O', answer)))
 
+
+
+
 # -- QUESTION CLASSIFIER --------------------------------------------------
 '''
 Using a modified version of the question classifier in nltk_data/corpora/qc
@@ -490,9 +508,10 @@ in ../corpora/, where each question is mapped to a tuple representing its
 class and subclass
 
 The API consists of:
-classify(question):
-    gets the text of the question in string format, splits it into tokens, then classifies it accordingly
-    input:   a text in unicode/string format
+classify(toks, nes):
+    gets the tokenized text of the question and the named entities in it then classifies it accordingly
+    toks:    a question as a list of tokens in unicode/string format
+    nes:     the named entities that appear in the question
     returns: a tuple representing the class and subclass
 
 '''
