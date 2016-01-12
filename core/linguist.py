@@ -372,11 +372,154 @@ def lda(docs, num):
 
 
 # -- COMMAND relationships ---------------------------------------------------------------
-def getrelationships(src, args):
+'''
+Below is the information extractor. It chooses the sentences containing topics or named 
+entities, then chunks them to extact the correct parts of speech, analyse them, and pair
+them into sets of attributes or relationships
+    <src> can be a file or directory
+    takes no args
+'''
+
+'''
+Turns a phrase like 'Hawaii is warm' into the dictionary item
+'Hawaii': { 'LOCATION', 'warm' }
+If in any other sentence, we find 'volcanoes erupt in the hot island of Hawaii', then
+'Hawaii': { 'LOCATION', 'warm', 'hot island' }
+
+Makes use of splitting the sentence into chunks and looks for NPs, VPs
+
+NP: nouns with prepositions, articles, and adjectives => entities with attributes
+VP: verbs (simple and compound), last verb in VP in infinitive =>  relations
+'''
+def node_children(tree):
+    return [t  for t in list(islice(tree.subtrees(), len(tree)))]
+
+def parse_NP(tree):
     return []
 
 
-# -- COMMAND relationships ---------------------------------------------------------------
+def attribs(sents, chunks, nes, ldas):
+
+    adjs = [ 'JJ', 'JJR', 'JJS' ]
+    vbs  = [ 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ' ]
+    nns  = [ 'NN', 'NNS', 'NNP', 'NNPS' ]
+    ins  = [ 'of', 'that', 'which', 'like', 'in', 'at', 'as' ]
+
+    
+    nes_merged = [(' '.join(n[0]), n[1]) for n in nes]
+
+    # dictionary of dictionaries for each named entity
+    retrieved = {}
+
+    for chunked_sent in chunks:
+        # filter through all chunks for NPs, get each subtree that may contain attributes next to nouns
+        # then create dictionary entry for the named entity/noun if it does not exist
+        # and add the ajectives in the bag
+        print(node_children(chunked_sent))
+        filtered = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP' or any(map(lambda l: l[1] in nns, t.leaves()))))
+        # merge noun that comes after noun phrase into a noun phrase
+        for t in filtered:
+            ind = filtered.index(t)
+            print(t)
+            print(ind)
+            if ind < len(filtered) - 1:
+                nextt = filtered[ind + 1]
+                if t.label() == 'NP' and nextt in nns:
+                    t[ind] = nltk.tree.Tree('NP', [ind, nextt])
+                del t[ind + 1]
+
+        grammar = '''
+            ADJ:  {<IN><JJ.*>*<NP>} 
+            ATTR: {<NP><IN><NP>}
+            '''
+        regex_chunker = nltk.RegexpParser(grammar) # will split words into groups as in grammar
+
+        for t in filtered:
+            if t.label() == 'NP':
+                words = [l[0] for l in t.leaves()]
+                pos = nltk.pos_tag(words)
+                regex_chunks = regex_chunker.parse(pos)
+                print(regex_chunks)
+                # the first case in the grammar, e.g. 'beautiful Hawaii'
+                for subt in regex_chunks.subtrees():
+                    subject = ''
+                    if subt.label() == 'NP' or subt.label in nns:
+                        # if ne or topic, then it becomes node
+                        print(subt)
+                        possible_subject = ' '.join([l[0] for l in subt.leaves()])
+                        print(possible_subject)
+                        if possible_subject in [n[0] for n in nes_merged] or possible_subject in ldas:
+                            subject = possible_subject
+                            subject_type = nes_merged.get(subject)
+
+                    attributes_bag = []        
+                    if subt.label() == 'JJ':
+                        # grab all adjectives
+                        attributes_bag += [' '.join([l[0] for l in subt.leaves()])]
+                    print(attributes_bag)
+
+                # now add findings to dictionary
+                if subject != '':
+                    if subject in retrieved.keys():
+                        if subject_type in retrieved[subject].keys():
+                            retrieved[subject][subject_type] += attributes_bag
+                        else:
+                            retrieved[subject] = dict((subject_type, attributes_bag)) 
+                    else:
+                        retrieved[subject] = dict((subject_type, attributes_bag)) 
+            
+    return retrieved            
+
+    
+'''
+Barack Obama is the prezident of the United States.
+
+NP Barack Obama
+VP is
+NP the prezident of the United States
+
+VP = is, was, etc.
+
+is(barack, prezinf)
+
+person(barack, prezindent of the united states, born in hawaii
+'''
+def relations(sents, chunks, nes, ldas):
+    return {}
+
+def getrelationships(src, args):
+    print("Extracting information from documents at " + src + " ...")
+
+    docs = getdocs(src)
+
+    st  = getSentenceTokenizer()
+    ch  = getChunkParser()
+    ner = getNameEntityDetector()
+
+    dbs = []  
+
+    for doc in docs:
+        db = {}
+
+        sents  = st.text2sents(doc)
+        sents  = [list(filter(lambda x: x not in string.punctuation, sent)) for sent in sents]
+        ldas   = [l for l in lda2dict(lda([doc], 2))[0]]
+        nes    = [ne[0] for ne in ner.text2ne(doc)]
+        sents  = list(filter(lambda sent: any([t in sent for t in ldas]) or any([ne in sent for ne in nes]), sents))
+        chunks = ch.sents2chunks(sents)
+        nes    = ner.chunks2ne(doc, chunks)
+
+        ats = attribs(  sents, chunks, nes, ldas)
+        rls = relations(sents, chunks, nes, ldas)
+          
+        db = ats       
+    dbs += [db]
+
+    return dbs 
+
+
+
+# -- COMMAND questions ------------------------------------------------------------------
 '''
 Classifies questions based on the question classifier
     <text> is the question in string format 

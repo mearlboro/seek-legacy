@@ -332,6 +332,14 @@ class ChunkParser():
         self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
         # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
+    def sent2chunks(self, sentence):
+        # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
+        # TODO: train chunker on brown if that's the case
+        # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
+        tagged_sentence = nltk.pos_tag(tokenized_sentence)
+        chunked_sentence = self.chunker.parse(tagged_sentence)
+        return chunked_sentence
+
     def sents2chunks(self, tokenized_sentences):
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
         # TODO: train chunker on brown if that's the case
@@ -544,7 +552,7 @@ class QuestionClassifier():
         print(str(datetime.now()) + ": Training question classifier with decision tree on modified QC corpus...")
 
         # get the question corpus into a set of tuples
-        f = open("../corpora/qc_selected.json", 'r+')
+        f = open("../corpora/qc_nes.json", 'r+')
         training_qs = json.load(f)
         f.close()
 
@@ -555,7 +563,7 @@ class QuestionClassifier():
         # Decision Tree classifier for training with the Treebank corpus
         size = int(len(featuresets)*0.2)
         train_set, test_set = featuresets[size:], featuresets[:size]
-        self.classifier = nltk.DecisionTreeClassifier.train(train_set)
+        self.classifier = nltk.NaiveBayesClassifier.train(train_set)
 
         print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
 
