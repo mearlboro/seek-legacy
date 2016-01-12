@@ -11,6 +11,8 @@ from nltk.collocations import *
 from nltk.collocations import BigramAssocMeasures, TrigramAssocMeasures
 from nltk.tokenize import MWETokenizer
 from gensim.corpora import WikiCorpus, wikicorpus, TextCorpus, MmCorpus, Dictionary
+from gensim.models import LogEntropyModel
+from gensim.similarities import Similarity
 from nltk.tag.stanford import StanfordNERTagger
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
@@ -358,13 +360,18 @@ class TopicModelling():
 #        self.wiki_dictionary.save(dict_src)
 #        MmCorpus.serialize(corp_src, self.wiki_corpus)
 
-	# Working with persisted corpus and dictionary
-        self.wiki_corpus = MmCorpus(corp_src)  # Revive a corpus
+  # Working with persisted corpus and dictionary
+        self.wiki_corpus = MmCorpus(corp_src)  # Revive a corpus using the Lazarus pit
         self.wiki_dictionary = Dictionary.load(dict_src)  # Load a dictionary
 
 #       print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")
 
 
+        self.logent_transformation = LogEntropyModel(self.wiki_corpus, self.wiki_dictionary)
+        self.logent_corpus = MmCorpus(corpus=self.logent_transformation[self.wiki_corpus])
+        self.logent_transformation.save("/disk100/wiki/logent.model")
+        MmCorpus.serialize('/disk100/wiki/logent_corpus.mm', self.logent_corpus)
+        print(str(datetime.now()) + ": Trained logent corpus and transformation")
 
     # extract topics with lda
     # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
@@ -391,7 +398,27 @@ class TopicModelling():
         pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
         return dict(pairs)
 
+    def getsimilardocs(self, title, lsi_text, docs, index_documents, query, num):
+      bow_doc = self.wiki_dictionary.doc2bow(wikicorpus.tokenize(lsi_text))
+      logent_doc = self.logent_transformation[[bow_doc]]
+      training_bow_docs = (self.wiki_dictionary.doc2bow(wikicorpus.tokenize(document))
+                            for document in docs)
+      logent_documents = self.logent_transformation[training_bow_docs]
 
+      lsi_transformation = gensim.models.lsimodel.LsiModel(corpus=logent_corpus, id2word=self.wiki_dictionary, num_features=num)
+      lsi_transformation.save("/disk100/wiki/lsi.model")
+
+      corpus = (self.wiki_dictionary.doc2bow(wikicorpus.tokenize(doc))
+                    for doc in index_documents)
+
+      index = Similarity(corpus=lsi_transformation[logent_transformation[corpus]],
+                        num_features=num, output_prefix="shard")
+
+      sims_to_query = index[lsi_transformation[logent_transformation[self.wiki_dictionary.doc2bow(wikicorpus.tokenize(query))]]]
+      best_score = max(sims_to_query)
+      index = sims_to_query.tolist().index(best_score)
+      most_similar_doc = docs[index]
+      return most_similar_doc
 
 # -- NAME ENTITY DETECTOR ---------------------------------------------------
 '''
