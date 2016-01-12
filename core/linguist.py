@@ -376,7 +376,24 @@ def getrelationships(src, args):
     return []
 
 
+# -- COMMAND relationships ---------------------------------------------------------------
+'''
+Classifies questions based on the question classifier
+    <text> is the question in string format 
+    takes no args
+'''
+def getquestiontype(text, args):
 
+    qc  = getQuestionClassifier()
+    ner = getNameEntityDetector()
+
+    nes = ner.text2ne(text)
+    c = qc.classify(text, nes)
+
+    del qc
+    del ner
+
+    return c
 
 ##########################################################################################
 
@@ -385,6 +402,7 @@ commands = {
     'entities': getentities,
     'topics': gettopics,
     'relationships': getrelationships,
+    'question': getquestiontype,
 }
 
 if len(sys.argv) <= 2:
@@ -401,5 +419,5 @@ if len(sys.argv) > 2:
     if commands.get(com, False):
         print(commands[com](src, args))
     else:
-        print("<command> can be \n summary \n entities \n topics \n relationships")
+        print("<command> can be \n summary \n entities \n topics \n relationships \n question ")
         sys.exit(0)

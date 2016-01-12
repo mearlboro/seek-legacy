@@ -24,3 +24,16 @@ questions = dict((q, qtype) for (q, qtype) in qc.items() if any(qtype[2][0] in t
 
 with open('qc_selected.json', 'w') as out:
     json.dump(questions, out)
+
+# browsing categories
+# types = [q[2] for q in qs.values()]
+# types_string = [t[0]+' '+t[1] for t in types]
+# set = sorted(set(types_string))
+# adding the NEs
+# from statistician import NameEntityDetector
+# ner = NameEntityDetector()
+# f = open('../corpora/qc_selected.json','r+')
+# qs = json.load(f)
+# qs_nes_list = []
+# for k,v in qs.items():
+#     qs_nes_list += [[k, [v[0],ner.text2ne(k),v[2]]] ]
