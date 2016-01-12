@@ -156,6 +156,25 @@ def sentence_freq(text, sents):
 
 #######################################################################################
 
+# -- COMMAND mostfreq ---------------------------------------------------------------------
+'''
+get the most frequent word 
+'''
+def mostfreq(src, args):
+    docs = getdocs(src)
+
+     
+    words = []
+    for doc in docs:
+        toks = nltk.word_tokenize(doc)
+        toks = filter_stop_words(toks)
+        freqs = word_freq(toks)
+        freqs = sorted(freqs, key=lambda x:x[1], reverse=True)
+        words += [freqs[0]]
+
+    return words
+
+
 # -- COMMAND summary ---------------------------------------------------------------------
 '''
 When summing frequencies per sentence add bias from topics in that phrase
@@ -357,7 +376,7 @@ def lsi(docs, num):
     lsi_topics = gensim.models.lsimodel.LsiModel(corpus=corp, id2word=dictionary, num_topics=num)
 
     # returns the topics as a dictionary of words and scores
-    return lsi_topics.print_topics(num)
+    return lsi2dict(lsi_topics.print_topics(num))
 
 
 def lda(docs, num):
@@ -371,7 +390,7 @@ def lda(docs, num):
     corp = [dictionary.doc2bow(reduce(add, filtered))]
 
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
-    return lda_topics.print_topics(num)
+    return lda2dict(lda_topics.print_topics(num))[0]
 
 
 
@@ -387,6 +406,7 @@ def getrelationships(src, args):
 
 commands = {
     'summary': getsummary,
+    'mostfreq': mostfreq,
     'entities': getentities,
     'topics': gettopics,
     'relationships': getrelationships,
