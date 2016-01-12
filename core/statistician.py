@@ -522,7 +522,7 @@ class QuestionClassifier():
         utoks = [w.lower() for w in toks]
         udict = dict(enumerate(utoks)).values()
 
-        whlist = ['who', 'what', 'where', 'when', 'why']
+        whlist = ['who', 'what', 'where', 'when', 'why', 'how']
 
         return {
             'is-who'  : 'who'   in udict or 'name'  in udict,
@@ -537,7 +537,6 @@ class QuestionClassifier():
             'loc-ne'  : any(map(lambda x: x[1] == 'LOCATION' ,     nes)),
             'org-ne'  : any(map(lambda x: x[1] == 'ORGANIZATION' , nes)),
             'time-ne' : any(map(lambda x: x[1] == 'TIME',          nes)),
-            ## 'num'     : Todo: with regex
         }
 
     # Builds the classifier
@@ -545,7 +544,7 @@ class QuestionClassifier():
         print(str(datetime.now()) + ": Training question classifier with decision tree on modified QC corpus...")
 
         # get the question corpus into a set of tuples
-        f = open("../corpora/qc.json", 'r+')
+        f = open("../corpora/qc_selected.json", 'r+')
         training_qs = json.load(f)
         f.close()
 
