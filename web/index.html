@@ -40,15 +40,18 @@
       <div class="row">
         <!-- Seek Almighty -->
         <div id="eyewrappper"> <!-- will be resizing -->
-          <div class="col-lg-12"><div id="eye" class="neutral">&nbsp;</div>
+          <div class="col-lg-12">
+            <div id="eye" class="neutral">&nbsp;</div>
           </div>
         </div>
       </div>
       <!-- only for proof of concept, to be removed -->
-      <button id="neutral"  onclick="changeMood('neutral')"></button>
-      <button id="happy"    onclick="changeMood('happy')"></button>
-      <button id="sad"      onclick="changeMood('sad')"></button>
-      <button id="thinking" onclick="changeMood('thinking')"></button>
+      <div class="row">
+        <button id="neutral"  onclick="changeMood('neutral')"></button>
+        <button id="happy"    onclick="changeMood('happy')"></button>
+        <button id="sad"      onclick="changeMood('sad')"></button>
+        <button id="thinking" onclick="changeMood('thinking')"></button>
+      </div>
 
       <div class="row" id="query">
         <div class="col-lg-2 col-lg-push-2">
@@ -57,21 +60,54 @@
           <span class="btn btn-lg fa fa-microphone" id="input-toggle" onclick="toggleInput()"></span>
         </div>
 
-        <div class="col-lg-4 col-lg-push-2" >
+        <div class="col-lg-4 col-lg-push-2">
           <!-- input box -->
           <span class="input-group" id="question">
             <input type="text" class="main-input" placeholder="What would you like to know?">
-            <input type="submit" class="hide" id="hiddensubmit">
+            <a href="#result"><input type="submit" class="hide" id="hiddensubmit"></a>
           </span>
         </div>
       </div>
 
     </section>
 
-    <section id="answer" style="display: none">
+    <!--section id="answer" style="display: none">
       <iframe src="answer.html"> </iframe>
-    </section>
+    </section-->
 
+    <div class="wrapper">
+    <section id="result" class="full">
+      <div class="row" id="answer">
+        <br>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+      </div>
+
+      <div class="row" id="options"> <!-- currently "more"; future "summary", etc. -->
+        <div class="col-lg-12">
+          <a href="#more"><span class="btn btn-lg fa fa-book" id="click4info"> I want to know more!</span></a>
+        </div>
+      </div>
+
+      <div class="row" id="more">
+        <br>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed rutrum enim mollis urna porta, at vulputate tellus egestas. Nulla a eros libero. Suspendisse eleifend faucibus viverra. Morbi mattis, diam convallis laoreet sollicitudin, nulla urna gravida odio, eu bibendum justo tortor at lorem. Praesent at nunc ut ligula sodales vulputate vitae vel erat. Nulla eu dui in urna sodales finibus. Vestibulum porta tincidunt nibh, a ultrices dui vulputate vitae. Proin rutrum bibendum sapien, viverra pulvinar nunc hendrerit non. Suspendisse dui tellus, luctus rhoncus cursus non, pulvinar placerat sem. Fusce ut vehicula orci. Sed ligula risus, pharetra ac diam ac, aliquam tristique nisl.</p>
+        <br>
+        <p>Vivamus eget massa neque. Aliquam vitae lacus ullamcorper, fringilla nunc non, venenatis turpis. Vivamus tempor lacus sit amet nunc dignissim ornare. Fusce sed tempor dui. Praesent nunc dolor, dignissim quis hendrerit non, volutpat a velit. Cras vitae nisl eu dui pellentesque sagittis a sit amet est. Sed ligula libero, elementum a varius et, dictum vel leo. Curabitur sed eleifend nisl, nec ultrices tortor. Vivamus id risus non metus placerat blandit. Nam non mi blandit, pharetra tellus et, posuere velit. Vestibulum semper, diam sed tristique porttitor, mauris ex ornare erat, nec maximus erat lorem sit amet erat. Donec eget felis in leo rutrum gravida quis facilisis sapien. Pellentesque a auctor augue, at varius turpis. Donec eu dui elementum, lacinia purus eget, sagittis diam. Nulla tristique fermentum turpis in porta. Mauris tristique semper nisl et consectetur.</p>
+        <br>
+        <p>Cras purus leo, facilisis vitae quam quis, porta elementum augue. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla risus massa, porttitor mattis auctor vel, vestibulum tempor orci. Nam molestie neque vitae erat ullamcorper, vel consectetur diam molestie. Cras at consectetur augue, eu sodales massa. Proin aliquet orci urna, cursus placerat turpis rutrum quis. Nulla ac aliquet mauris.</p>
+        <br>
+        <p>Nullam risus sapien, imperdiet in nunc et, luctus eleifend dolor. Sed ut iaculis orci. Pellentesque nec tellus arcu. Mauris pretium pulvinar sodales. Morbi elit diam, lacinia nec eleifend non, porta vel urna. Praesent nec nisi lectus. Cras volutpat fermentum risus. Mauris ac scelerisque tortor.</p>
+        <br>
+        <p>Aenean eu nunc non elit interdum bibendum. Praesent eget euismod odio. Cras et risus quis tortor semper tincidunt. Donec vel tempor metus. Sed molestie faucibus turpis quis finibus. Suspendisse condimentum justo neque, eget feugiat ex porta vitae. Suspendisse vestibulum, nunc eget accumsan scelerisque, felis mi dignissim augue, quis commodo dolor felis sed dolor. Praesent ut diam gravida, feugiat eros eu, suscipit ex. Donec maximus diam id ante rhoncus, ac finibus sem condimentum. Aliquam vitae venenatis nisl. Proin lacinia lectus id augue accumsan auctor. Nulla ultrices justo id leo tempus, sed auctor nulla mattis. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nam condimentum massa libero, quis sollicitudin nisi aliquet quis. Curabitur semper eu diam vel aliquet. Etiam eu odio sit amet dolor sagittis facilisis.</p>
+        <br>
+      </div>
+
+      <div class="row" id="feedback">
+        <!-- slider -->
+      </div>
+    </div>
+
+  </div>
   </div>
 
   <!-- script that handles the animations -->
