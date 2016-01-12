@@ -10,7 +10,7 @@ import  nltk.chunk, nltk.data, nltk.tag
 from nltk.collocations import *
 from nltk.collocations import BigramAssocMeasures, TrigramAssocMeasures
 from nltk.tokenize import MWETokenizer
-from gensim.corpora import WikiCorpus, wikicorpus, TextCorpus, MmCorpus
+from gensim.corpora import WikiCorpus, wikicorpus, TextCorpus, MmCorpus, Dictionary
 from nltk.tag.stanford import StanfordNERTagger
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
@@ -347,16 +347,24 @@ class ChunkParser():
 
 class TopicModelling():
     def __init__(self):
-        print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")
-        wiki_src = '../raw/wiki/enwiki-articles.xml.bz2'
+#       print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")
+        wiki_src = '/disk100/wiki/xml/enwiki-articles.xml.bz2'
+        dict_src = '/disk100/wiki/wiki_dictionary.dict'
+        corp_src = '/disk100/wiki/wiki_corpus.mm'
 
         # load the corpus of documents in the wikipedia archive and save parsed files to disk
-        self.wiki_corpus = WikiCorpus(wiki_src)
+#        self.wiki_corpus = WikiCorpus(wiki_src)
 #        self.wiki_dictionary = self.wiki_corpus.dictionary
-#        self.wiki_dictionary.save("../raw/wiki/parsed/wiki_dict.dict")
-        MmCorpus.serialize("../raw/wiki/parsed/wiki_corpus.mm", self.wiki_corpus)
+#        self.wiki_dictionary.save(dict_src)
+#        MmCorpus.serialize(corp_src, self.wiki_corpus)
 
-        print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")
+	# Working with persisted corpus and dictionary
+        self.wiki_corpus = MmCorpus(corp_src)  # Revive a corpus
+        self.wiki_dictionary = Dictionary.load(dict_src)  # Load a dictionary
+
+#       print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")
+
+
 
     # extract topics with lda
     # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
