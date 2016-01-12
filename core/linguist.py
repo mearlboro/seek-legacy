@@ -179,30 +179,24 @@ def augment_topics(model, text, sents, freqs):
                       )]
     return sentfreqs
 
-
 '''
 When summing frequencies per sentence add bias from named entities in that phrase
-    model: 2 for NEs, 3 for Focused NEs
     text : the content of a document in a string
     sents: the sentences in a document - a list of lists of word and punctuation tokens
     freqs: the output of sentence_frequency(text, sents)
 '''
-def augment_ne(model, text, sents, freqs):
-    # TODO(afterburner): make this happen
-    # ned =getNameEntityDetector()
-    # f = open(sys.argv[1])
-    # input_text = f.read()
-    # sent_freqs = filefreqsentences(sys.argv[1])
-    # named_entities = ned.chunks2ne(input_text)
-    # ned.chunks2ne(input_text)
-    # fne, rne = ned.clearnamedentities(named_entities, sent_freqs)
-    # print("Regular named entities: \n")
-    # print(named_entities)
-    # print("Focused named entities: \n")
-    # print(fne)
-    # print("Relevant named entities: \n")
-    # print(rne)e getsummary(src, args):
-    return []
+def augment_ne(text, sents, freqs):
+    bias = 2 # TODO: meaningful number
+
+    nes = ne([text], 1) # get single-word NEs by means of text analysis
+    nes = [ne[0] for ne in nes] # the words as list
+
+    sentfreqs = []
+    for sent,freq in freqs:
+        sentfreqs +=  [(reduce(lambda x,y: x + ' ' + y, sent),
+                        freq * sum(list(map(lambda word: word.lower() in nes and bias or 1, sent)))
+                      )]
+    return sentfreqs
 
 
 '''
@@ -213,13 +207,15 @@ words in each sentence (as returned by sentence_freq), summed with a bias coming
 the presence of topics, named entities, or both in the sentence.
 
     <src> is a file or directory
-    <args[0]> can be 0 (LDA), 1 (LSI), 2 (NEs), 3 (Focused NEs), default behaviour is LDA.
+    <args[0]> can be 0 (LDA), 1 (LSI), 2 (NEs), default behaviour is LDA.
     <args[1]> must be an integer representing the number of topics to extract, default number is 10.
 '''
 def getsummary(src, args):
     if len(args) < 2:
         print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
         sys.exit(0)
+
+    print("Constructing summary for documents at " + src + " ...")
 
     model = args[0]
     num = args[1]
@@ -233,8 +229,8 @@ def getsummary(src, args):
         freqs = sentence_freq(doc, sents)
         if model == 0 or model == 1:
             freqs = augment_topics(model, doc, sents, freqs)
-        elif model == 2 or model == 3:
-            freqs = augment_nes(model, doc, sents, freqs)
+        elif model == 2:
+            freqs = augment_ne(doc, sents, freqs)
         sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
 
         min_freq = sortedfreqs[num][1]
@@ -258,18 +254,10 @@ sentence frequency measurements.
 
     <src> is a file or directory
     <args[0]> can be 0 (chunk-based detection) or 1 (text-based detection).
-    <args[1]> can be 0 (NEs), 1 (FNEs), 2 (RNEs), 3 (all)
+    <args[1]> can be 0 (NEs)
 '''
 
-def getentities(src, args):
-    if len(args) < 2:
-        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
-        sys.exit(0)
-
-    model = args[0]
-    etype = args[1]
-    docs  = getdocs(src)
-
+def ne(docs, model):
     st  = getSentenceTokenizer()
     ch  = getChunkParser()
     ner = getNameEntityDetector()
@@ -289,6 +277,21 @@ def getentities(src, args):
 
     return nes
 
+def getentities(src, args):
+    if len(args) < 2:
+        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        sys.exit(0)
+
+    model = args[0]
+    model_name = 'chunk-based' if 0 else 'text-based'
+    print("Retrieving named entities by " + model_name + " detection for documents at " + src + " ...")
+
+    docs  = getdocs(src)
+
+    return ne(docs, model)
+
+
+
 # -- COMMAND topics ----------------------------------------------------------------------
 # TODO: use the trained class
 
@@ -304,9 +307,13 @@ def gettopics(src, args):
         print("Incorrect arguments: expected \n linguist.py topics <src> <model> <num>")
         sys.exit(0)
 
+    model = args[0]
+    model_name = 'LDA' if 0 else 'LSI'
+    print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
+
     docs = getdocs(src)
 
-    if args[0] == 1:
+    if model == 1:
         print("LSI model topics:")
         return lsi(docs, args[1])
     else:
@@ -319,6 +326,7 @@ def lsi2dict(topics):
     pairs  = [topic.split('*') for topic in topics]
     pairs  = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
     return dict(pairs)
+
 
 def lda2dict(topics):
     dicts = []
@@ -335,7 +343,6 @@ def lsi(docs, num):
     # TODO: chunk mwes and collocations if necessary.
     # tokenize each doc, filter punctuation and stop words
     docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
-    print(docs)
     filtered = [f[1] for f in list(map(filter_stop_words, docs))]
 
     # create Gensim dictionary and corpus
