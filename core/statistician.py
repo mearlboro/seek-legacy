@@ -334,6 +334,14 @@ class ChunkParser():
         self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
         # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
+    def sent2chunks(self, sentence):
+        # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
+        # TODO: train chunker on brown if that's the case
+        # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
+        tagged_sentence = nltk.pos_tag(tokenized_sentence)
+        chunked_sentence = self.chunker.parse(tagged_sentence)
+        return chunked_sentence
+
     def sents2chunks(self, tokenized_sentences):
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
         # TODO: train chunker on brown if that's the case
@@ -346,7 +354,12 @@ class ChunkParser():
 
 
 # -- TOPIC MODELLING ----------------------------------------------------------
-
+'''
+The TopicModelling class uses the latest Wikipedia dump as the main corpus and
+dictionary, and for the intiial distribution of topics.
+Uncomment the 'Wikipedia training' section whenever the corpus updates, then
+re-run init.py to refresh the pickle.
+'''
 class TopicModelling():
     def __init__(self):
 #       print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")
@@ -420,6 +433,7 @@ class TopicModelling():
       most_similar_doc = docs[index]
       return most_similar_doc
 
+
 # -- NAME ENTITY DETECTOR ---------------------------------------------------
 '''
 extracts named entities from an input text
@@ -457,15 +471,14 @@ class NERComboTagger(StanfordNERTagger):
 
 class NameEntityDetector():
     def __init__(self):
-        self.chunker = ChunkParser()
-        classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek5.ser.gz'
-        self.name_tagger = NERComboTagger(classifier_path1,stanford_ner_models=classifier_path1)
+        self.classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek5.ser.gz'
+        self.name_tagger = NERComboTagger(self.classifier_path1,stanford_ner_models=self.classifier_path1)
         self.name_tagger._stanford_jar = os.environ.get("CLASSPATH")
 
     def text2ne(self, input_text):
         split_text = re.split("\,?\.?\s+", input_text)
         named_entities = dict(self.name_tagger.tag(split_text))
-        return set(filter(lambda x: x[1] != 'O', named_entities.items()))
+        return list(filter(lambda x: x[1] != 'O', named_entities.items()))
 
     def chunks2ne(self, input_text, chunked_sents):
         split_text = re.split("\,?\.?\s?\.?\,?", input_text)
@@ -487,7 +500,9 @@ class NameEntityDetector():
                         ent_key.append(t[0])
 
                 if (all(word in ent_key for word in person_entities.keys())):
-                    ent_key.append(' '.join(ent_key))
+                    joined = ' '.join(ent_key)
+                    if (joined not in ent_key):
+                        ent_key.append(joined)
                     answered.append((ent_key, "PERSON"))
                 if (any(word in ent_key for word in organization_entities.keys())):
                     answered.append((ent_key, "ORGANIZATION"))
@@ -495,15 +510,23 @@ class NameEntityDetector():
                     answered.append((ent_key, "LOCATION"))
         return list(filter(lambda x: x[1] != 'O' and x[1] != None, answered))
 
-    def summary(self, named_entities, sent_freqs):
-        summary = []
-        pers_org = list(filter(lambda x: x[1] != "LOCATION", named_entities))
-        sent_freqs = list(filter(lambda t: t[1] > 0.3, filefreqsentences(sys.argv[1])))
-        for named_entity in pers_org:
-            for sent_freq in sent_freqs:
-                if (named_entity[0] in sent_freq[0]):
-                    summary.append(sent_freq[0])
-        return summary
+    def file2ne(self, src):
+        p = subprocess.Popen(["java",
+                                "-mx1g",
+                                "edu.stanford.nlp.ie.NERClassifierCombiner",
+                                "-loadClassifier",
+                                self.classifier_path1,
+                                "-textFile",
+                                src,
+                                "-outputFormat",
+                                "tsv"], stdout=subprocess.PIPE)
+        answer = []
+        for l in p.stdout.read():
+            answer.append(l + "\n")
+        print(list(filter(lambda x: x[1] != 'O', answer)))
+
+
+
 
 # -- QUESTION CLASSIFIER --------------------------------------------------
 '''
@@ -518,9 +541,10 @@ in ../corpora/, where each question is mapped to a tuple representing its
 class and subclass
 
 The API consists of:
-classify(question):
-    gets the text of the question in string format, splits it into tokens, then classifies it accordingly
-    input:   a text in unicode/string format
+classify(toks, nes):
+    gets the tokenized text of the question and the named entities in it then classifies it accordingly
+    toks:    a question as a list of tokens in unicode/string format
+    nes:     the named entities that appear in the question
     returns: a tuple representing the class and subclass
 
 '''
@@ -531,7 +555,7 @@ class QuestionClassifier():
         utoks = [w.lower() for w in toks]
         udict = dict(enumerate(utoks)).values()
 
-        whlist = ['who', 'what', 'where', 'when', 'why']
+        whlist = ['who', 'what', 'where', 'when', 'why', 'how']
 
         return {
             'is-who'  : 'who'   in udict or 'name'  in udict,
@@ -546,7 +570,6 @@ class QuestionClassifier():
             'loc-ne'  : any(map(lambda x: x[1] == 'LOCATION' ,     nes)),
             'org-ne'  : any(map(lambda x: x[1] == 'ORGANIZATION' , nes)),
             'time-ne' : any(map(lambda x: x[1] == 'TIME',          nes)),
-            ## 'num'     : Todo: with regex
         }
 
     # Builds the classifier
@@ -554,7 +577,7 @@ class QuestionClassifier():
         print(str(datetime.now()) + ": Training question classifier with decision tree on modified QC corpus...")
 
         # get the question corpus into a set of tuples
-        f = open("../corpora/qc.json", 'r+')
+        f = open("../corpora/qc_nes.json", 'r+')
         training_qs = json.load(f)
         f.close()
 
@@ -565,7 +588,7 @@ class QuestionClassifier():
         # Decision Tree classifier for training with the Treebank corpus
         size = int(len(featuresets)*0.2)
         train_set, test_set = featuresets[size:], featuresets[:size]
-        self.classifier = nltk.DecisionTreeClassifier.train(train_set)
+        self.classifier = nltk.NaiveBayesClassifier.train(train_set)
 
         print(str(datetime.now()) + ": Classifier trained with accuracy " + str(nltk.classify.accuracy(self.classifier, test_set)))
 
