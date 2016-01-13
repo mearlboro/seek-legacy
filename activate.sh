@@ -27,8 +27,8 @@ else
   ## Path on local machines
   export NLTK_DATA="$HOME/nltk_data"
 fi
-cwd=$(pwd)
-cd $NLTK_DATA
+#cwd=$(pwd)
+#cd $NLTK_DATA
 
 # One time install run for stanford
 # wget http://nlp.stanford.edu/software/stanford-ner-2015-04-20.zip
@@ -49,4 +49,4 @@ export STANFORD_MODELS="$ST/classifiers"
 #python train_chunker.py treebank
 #python train_tagger.py brown
 
-cd $cwd
+#cd $cwd
