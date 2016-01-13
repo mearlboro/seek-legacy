@@ -368,7 +368,7 @@ class TopicModelling():
 
 
         self.logent_transformation = LogEntropyModel(self.wiki_corpus, self.wiki_dictionary)
-        self.logent_corpus = MmCorpus(corpus=self.logent_transformation[self.wiki_corpus])
+        self.logent_corpus = MmCorpus(self.logent_transformation[self.wiki_corpus])
         self.logent_transformation.save("/disk100/wiki/logent.model")
         MmCorpus.serialize('/disk100/wiki/logent_corpus.mm', self.logent_corpus)
         print(str(datetime.now()) + ": Trained logent corpus and transformation")
