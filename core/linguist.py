@@ -411,6 +411,7 @@ def attribs(sents, chunks, nes, ldas):
     # dictionary of dictionaries for each named entity
     retrieved = {}
     # retrieved = []
+    prev_ne = None
     for chunked_sent in chunks:
         # filter through all chunks for NPs, get each subtree that may contain attributes next to nouns
         # then create dictionary entry for the named entity/noun if it does not exist
@@ -418,26 +419,30 @@ def attribs(sents, chunks, nes, ldas):
         filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')) # or any(map(lambda l: l[1] in nns, t.leaves())))
         # merge noun that comes after noun phrase into a noun phrase
         relation = []
-        prev_ne = None
+
         for subtree in filtered_chunked_subtrees:
             # print(subtree)
             ent_key = ' '.join(list(map(lambda t: t[0], subtree.leaves())))
+            print(ent_key)
             if (any(word in ent_key for word in pers_org.keys())):
                 prev_ne = ent_key
+            elif (prev_ne not in retrieved.keys()):
+                # relation.append(ent_key)
+                retrieved[prev_ne] = [ent_key]
             else:
-                relation.append(ent_key)
+                retrieved[prev_ne].append(ent_key)
             # ind = chunked_sent.index(subtree)
             # if (ent_key not in retrieved):
             # if (ind < len(chunked_sent) - 1):
                 # if (chunked_sent[ind + 1][1] in vbs):
-            if (len(relation) >= 2 and prev_ne != None):
-                # retrieved.append(relation)
-                # relation = []
-                retrieved[prev_ne] = relation
+            # if (len(relation) >= 2 and prev_ne != None):
+            #     # retrieved.append(relation)
+            #     # relation = []
+            #     retrieved[prev_ne] = relation
                 # if (pers_org[prev_ne] == "PERSON"):
                 #     for name in prev_ne.split(" "):
                 #         retrieved[name] = relation
-                relation = []
+                # relation = []
                 # for porg in pers_org:
                     # if (porg in " ".join(relation)):
                         # retrieved[porg]= dict((porg, relation))
@@ -551,7 +556,7 @@ def getrelationships(src, args):
         sents  = list(filter(lambda sent: any([t in sent for t in ldas]) or any([ne in sent for ne in nes]), sents))
         chunks = ch.sents2chunks(sents)
         nes    = ner.chunks2ne(doc, chunks)
-        
+
         ats = attribs(  sents, chunks, nes, ldas)
         print(ats)
         # attribs(  sents, chunks, nes, ldas)
