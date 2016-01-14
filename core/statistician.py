@@ -352,10 +352,10 @@ class ChunkParser():
 
 
 # -- TOPIC MODELLING ----------------------------------------------------------
-''' 
-The TopicModelling class uses the latest Wikipedia dump as the main corpus and 
+'''
+The TopicModelling class uses the latest Wikipedia dump as the main corpus and
 dictionary, and for the intiial distribution of topics.
-Uncomment the 'Wikipedia training' section whenever the corpus updates, then 
+Uncomment the 'Wikipedia training' section whenever the corpus updates, then
 re-run init.py to refresh the pickle.
 '''
 class TopicModelling():
@@ -376,7 +376,7 @@ class TopicModelling():
         #                                                                                          #
         # print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")     #
         # ---------------------------------------------------------------------------------------- #
-        
+
         # Working with persisted corpus and dictionary
         self.wiki_corpus     = MmCorpus(corp_src)         # Revive a corpus
         self.wiki_dictionary = Dictionary.load(dict_src)  # Load a dictionary
@@ -475,9 +475,6 @@ class NameEntityDetector():
                         ent_key.append(t[0])
 
                 if (all(word in ent_key for word in person_entities.keys())):
-                    joined = ' '.join(ent_key)
-                    if (joined not in ent_key):
-                        ent_key.append(joined)
                     answered.append((ent_key, "PERSON"))
                 if (any(word in ent_key for word in organization_entities.keys())):
                     answered.append((ent_key, "ORGANIZATION"))
