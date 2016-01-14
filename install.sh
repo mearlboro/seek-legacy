@@ -17,24 +17,25 @@ elif [[ $platform == 'osx' ]]; then
 fi
 
 # -- ruby -----------------------------------------------------------------------
-gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
-curl -sSL https://get.rvm.io | bash -s stable --ruby
-rvm install 2.2.1
-/bin/bash --login
-rvm use 2.2.1
-sudo gem install mechanize
+#gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+#curl -sSL https://get.rvm.io | bash -s stable --ruby
+#rvm install 2.2.1
+#/bin/bash --login
+#rvm use 2.2.1
+#sudo gem install mechanize
 
 if [[ $platform == 'linux' ]]; then
   # -- python -------------------------------------------------------------------
-  sudo apt-get install python3
-  sudo apt-get install python-virtualenv
-  sudo apt-get install python3-pip
+ # sudo apt-get install python3
+ # sudo apt-get install python-virtualenv
+ # sudo apt-get install python3-pip
 
   # -- setup environment --------------------------------------------------------
-  virtualenv -p /usr/bin/python3 seek-env
+#  virtualenv -p /usr/bin/python3 seek-env
   # -- dont forget to always activate / deactivate ------------------------------
-  /bin/bash -c ". seek-env/bin/activate; exec /bin/bash -i"
-  cd seek-env
+ # /bin/bash -c ". seek-env/bin/activate; exec /bin/bash -i"
+source seek-env/bin/activate  
+cd seek-env
 
   # -- textract dependencies ----------------------------------------------------
   sudo apt-get install python3-dev libxml2 antiword unrtf poppler-utils pstotext tesseract-ocr flac lame libmad0 libsox-fmt-mp3 sox libjpeg-dev zlib1g-dev
@@ -70,8 +71,8 @@ ed -s lib/python3.4/site-packages/textract-1.4.0-py3.4.egg/textract/parsers/util
 
 
 # -- NLTK -----------------------------------------------------------------------
-pip3 install -U nltk
-python -m nltk.downloader all
+#pip3 install -U nltk
+#python -m nltk.downloader all
 
 # prepare nltk data and download stanford NLP package
 # Path on local machines
@@ -95,8 +96,8 @@ echo "WARNING!!! Slow"
 git clone https://github.com/japerk/nltk-trainer
 cd nltk-trainer
 python setup.py install
-python train_chunker.py treebank
-python train_tagger.py brown
+#python train_chunker.py treebank
+#python train_tagger.py brown
 
 cd $cwd
 
