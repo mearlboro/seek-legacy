@@ -1,0 +1,38 @@
+{% extends "index.html" %}
+
+{% block commands %}
+<!-- query and upload box -->
+<div class="row" id="commands">
+  <div class="col-lg-2 col-lg-push-2" id="buttons">
+    <!-- two images as buttons -->
+    <form action="" method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ docform }}
+      <input type="submit" value="Upload" />
+    </form>
+    <span class="btn btn-lg fa fa-upload"></span>
+    <span class="btn btn-lg fa fa-microphone" id="input-toggle" onclick="toggleInput()"></span>
+  </div>
+
+  <div class="col-lg-4 col-lg-push-2" id="query">
+    <!-- input box -->
+    <span class="input-group" id="question">
+      <form action="" method="post">
+        {% csrf_token %}
+        {{ queryform }}
+      </form>
+    </span>
+  </div>
+
+  {% block answer %}
+  {% endblock %}
+
+  <!-- confirmation after uploading a file -->
+  <div class="row" id="confirmation">
+    <div class="col-lg-4 col-lg-push-2">
+      <p>{{ confirmation }}</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

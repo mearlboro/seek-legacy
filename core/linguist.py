@@ -59,13 +59,13 @@ def getQuestionClassifier():
 ''' Get text from document or directory '''
 def getdocs(src):
     if os.path.isdir(src):
-        print("Collecting documents at directory " + src + " ...")
+#        print("Collecting documents at directory " + src + " ...")
         documents = []
         for f in glob.glob(os.path.join(src, '*.txt')):
             documents += [open(f, 'r+').read()]
         return documents
     if os.path.isfile(src):
-        print("Collecting document " + src + " ...")
+#        print("Collecting document " + src + " ...")
         return [open(src, 'r+').read()]
 
 
@@ -155,6 +155,18 @@ def sentence_freq(text, sents):
 
 
 #######################################################################################
+# -- COMMAND mostfreq ---------------------------------------------------------------------
+def mostfreq(src, args):
+    docs = getdocs(src)
+    doc = docs[0]
+    words = nltk.word_tokenize(doc)
+    freqs = word_freq(words)
+    sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
+
+    return "The most frequent word in this text is " + sortedfreqs[0][0] + ", appearing " + sortedfreqs[0][1] + " times."
+
+
+
 
 # -- COMMAND summary ---------------------------------------------------------------------
 '''
@@ -215,7 +227,7 @@ def getsummary(src, args):
         print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
         sys.exit(0)
 
-    print("Constructing summary for documents at " + src + " ...")
+    # print("Constructing summary for documents at " + src + " ...")
 
     model = args[0]
     num = args[1]
@@ -240,7 +252,7 @@ def getsummary(src, args):
 
     del st
 
-    return summaries
+    return [ ' '.join(summary) for summary in summaries][0]
 
 
 
@@ -275,6 +287,7 @@ def ne(docs, model):
     del ch
     del ner
 
+    # this does only the last doc!
     return nes
 
 def getentities(src, args):
@@ -284,11 +297,29 @@ def getentities(src, args):
 
     model = args[0]
     model_name = 'chunk-based' if 0 else 'text-based'
-    print("Retrieving named entities by " + model_name + " detection for documents at " + src + " ...")
+#    print("Retrieving named entities by " + model_name + " detection for documents at " + src + " ...")
 
     docs  = getdocs(src)
 
-    return ne(docs, model)
+
+    ntype = int(args[1])
+    nes_filter_dict = { 0: 'PERSON', 1: 'LOCATION', 2: 'TIME', 3: 'ORGANIZATION' }
+
+    nes = ne(docs, model)
+#    print(nes)
+
+    selected_nes = list(filter(lambda n: n[1] == nes_filter_dict[ntype], nes))
+    just_nes = [' '.join(ne[0]) for ne in selected_nes]
+
+    if len(just_nes) == 0:
+        text = "I'm sorry, I don't think there is any " + nes_filter_dict[ntype].lower() + " in your document."
+    elif len(just_nes) == 1:
+        text = "The " + nes_filter_dict[ntype].lower() + " in your document is " + just_nes[0]
+    else:
+        text = "The documents contain information about " + ', '.join(just_nes[:-1]) + " and " + just_nes[-1]
+    return text
+
+ #   return ne(docs, model)
 
 
 
@@ -309,16 +340,24 @@ def gettopics(src, args):
 
     model = args[0]
     model_name = 'LDA' if 0 else 'LSI'
-    print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
+#    print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
+
 
     docs = getdocs(src)
 
     if model == 1:
-        print("LSI model topics:")
-        return lsi(docs, args[1])
+#       print("LSI model topics:")
+        topics = lsi2dict(lsi(docs, args[1]))
     else:
-        print("LDA model topics:")
-        return lda(docs, args[1])
+#       print("LDA model topics:")
+        topics = lda2dict(lda(docs, args[1]))[0]
+
+    just_topics = sorted(set([t[0] for t in topics.items()]), reverse=True)
+
+    text = "The document you gave me to read is about " + just_topics[0] + " and also mentions " + just_topics[1] + " and " + just_topics[2] + " rather insistently."
+
+    return text
+
 
 
 def lsi2dict(topics):
@@ -553,15 +592,21 @@ def getrelationships(src, args):
         nes    = ner.chunks2ne(doc, chunks)
         
         ats = attribs(  sents, chunks, nes, ldas)
-        print(ats)
+        #print(ats)
         # attribs(  sents, chunks, nes, ldas)
         # rls = relations(sents, chunks, nes, ldas)
 
         # db = ats
     dbs += [db]
 
-    return dbs
+    # I Change the return statement FROM: return (dbs, nes) TO: return (ats, nes)
+    return (ats, nes)
 
+
+# --- Adds information to database
+
+def addEntitiesToDatabase():
+    print("p")
 
 
 # -- COMMAND questions ------------------------------------------------------------------
@@ -591,6 +636,7 @@ commands = {
     'topics': gettopics,
     'relationships': getrelationships,
     'question': getquestiontype,
+    'mostfreq': mostfreq,
     # 'similar': todo
 }
 
@@ -604,7 +650,7 @@ if len(sys.argv) > 2:
     if len(sys.argv) > 3:
         args = int(sys.argv[3]), int(sys.argv[4])
 
-    print("Executing linguist " + com + " on " + src + " ...")
+    # print("Executing linguist " + com + " on " + src + " ...")
     if commands.get(com, False):
         print(commands[com](src, args))
     else:

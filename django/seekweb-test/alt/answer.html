@@ -1,0 +1,25 @@
+{% extends "commands.html" %}
+
+{% block answer %}
+<div class="wrapper">
+  <section class="full" id="result">
+    <div class="row" id="answer">
+      <br>
+      <p>{{ answer }}</p>
+    </div>
+
+    <div style="{% display_answer %}">
+      <div class="row" id="options">
+        <div class="col-lg-12">
+          <a href="#more"><span class="btn btn-lg fa fa-book" id="click4info"> I want to know more!</span></a>
+        </div>
+      </div>
+
+      <div class="row" id="more"> 
+        {{ more }}
+      </div>
+    </div>
+
+  </section>
+</div>
+{% endblock %}

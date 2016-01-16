@@ -1,3 +1,4 @@
+
 import nltk
 import gensim
 import os
@@ -44,11 +45,31 @@ while (result.type != location)
 
 
 # Assume questions start with 'wh..' word
-def getType(question):
-    type = question.split(' ')[0].lower()
-    return {
-        'who'  : 'person'
-        'what' : 'object'
-        'when' : 'time'
-        'where': 'location'
-    }[type]
+#def getType(question):
+#    type = question.split(' ')[0].lower()
+ #   return {
+#        'who'  : 'person'
+#        'what' : 'object'
+#        'when' : 'time'
+#        'where': 'location'
+#    }[type]
+
+
+def analyseEntities():
+
+
+  
+
+
+
+class QuestionInterpreter:
+
+
+if  (len(sys.argv) < 3):
+  print("The analyser expects the following command \n 
+          analyse.py <command> <question>")
+
+# A query is given. We need to analyse the query and return a result
+if (sys.argv[1] == "-a"):
+  print("TODO: question-to-answer")
+
