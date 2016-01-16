@@ -27,6 +27,9 @@ import numpy, nltk, gensim
 from nltk.corpus import stopwords
 from gensim import corpora, models, similarities
 
+import logging
+
+logger = logging.getLogger('handler')
 
 # ------------------------------------------------------------------------------------
 ''' import the trained classes from /skills '''
@@ -58,6 +61,7 @@ def getQuestionClassifier():
 
 ''' Get text from document or directory '''
 def getdocs(src):
+    logger.error(src)
     if os.path.isdir(src):
 #        print("Collecting documents at directory " + src + " ...")
         documents = []
