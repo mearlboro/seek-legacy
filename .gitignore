@@ -1,12 +1,16 @@
 # work directories containing files -- no need to store on git
-/Herox
-/Herox ßtuff
-/text/*
+/txt/*
 /raw/*
 /text-normalization
 /nltk-trainer
-/core/*.txt
-/core/__pycache__/
+
+# customisable file
+/core/init.py
+
+# cache
+/core/__pycache__/*
+/django/seek/__pycache__/*
+
 # seek environment should be recreated at every pull
 /seek-env/
 
@@ -14,3 +18,6 @@
 .*.swp
 .*.swo
 .DS_Store
+
+# compiled files
+*.pyc

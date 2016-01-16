@@ -4,7 +4,7 @@ from .models import Document
 from django.template import RequestContext, loader
 from django.http import HttpResponseRedirect
 from django.core.urlresolvers import reverse
-from .filehandler import handle_file, handle_question, handle_user_input#, handle_command
+from .filehandler import handle_file, handle_user_input
 from .commandhandler import handle_command
 import logging
 
@@ -13,8 +13,6 @@ logger = logging.getLogger('handler')
 def index(request):
         if 'files' not in request.session:
                 request.session['files'] = []
-        request.session['name'] = 'Stranger'
-     
         if 'name' not in request.session:
                 request.session['name'] = 'Stranger'
         if 'history' not in request.session:
@@ -38,7 +36,6 @@ def index(request):
                 if queryform.is_valid():
                         query = queryform.cleaned_data['query']
                         place_holder = query
-                        #query_response = handle_question(query, request.session['files'])
                         query_response = handle_user_input(query, request.session['files'], request.session['name'])
                         answer = query_response[1]
                         answer_display = "block"        

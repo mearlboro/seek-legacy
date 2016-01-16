@@ -5,7 +5,7 @@ import string
 import logging
 
 CORE_DIR = '/develop/Seek/core/'
-WEB_DIR = '/develop/seekweb/'
+WEB_DIR = '/develop/Seek/django/'
 logger = logging.getLogger('handler')
 
 # looks into the file stack and grabs the most recent one
@@ -86,7 +86,6 @@ def handle_command(command, file_list, user_name):
         logger.error(os.getcwd())
         if os.path.isfile(filename):
             args = []
-            filename = '../../seekweb/' + filename 
             if(req_summary): 
               cmd  = 'summary'
               args = ['0' , '10']
@@ -107,7 +106,6 @@ def handle_command(command, file_list, user_name):
               cmd = 'topics'
               args = ['1', '3']
 
-            logger.error(cmd)
             if cmd != '':
                 answer = call_core(cmd, args, filename) 
             else:
