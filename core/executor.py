@@ -12,7 +12,10 @@ from bs4 import BeautifulSoup
 def transfer_file(filepath):
     os.system('scp %s $IC_USERNAME@shell1.doc.ic.ac.uk:~' % filepath)
     filename = basename(filepath)
-    os.system("ssh -n $IC_USERNAME@shell1.doc.ic.ac.uk 'scp %s $IC_USERNAME@cloud-vm-45-110.doc.ic.ac.uk:/develop/Seek/txt/ && rm %s' " % (filename, filename))
+    os.system('''ssh -n $IC_USERNAME@shell1.doc.ic.ac.uk
+                'scp %s $IC_USERNAME@cloud-vm-45-110.doc.ic.ac.uk:/develop/Seek/txt/
+                 && rm %s'
+              ''' % (filename, filename))
 
 # -----------------------------------------------------------------------------
 # SEEK UPLOAD <SRC>
@@ -59,7 +62,7 @@ def extract(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
                 threads = len(files)
                 with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
                     print("(seek) Extracting from directory, file" + filename)
-                    executor.submit(lambda x,y:call("python extractor.py "+x+" "+y, shell=True), filename, dest)
+                    executor.submit(lambda x,y:call("python extractor.py " + x + " " + y, shell=True), filename, dest)
         else:
             cmd = "ruby scraper.rb -d %s" % src
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
@@ -69,7 +72,8 @@ def extract(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
             os.system('python extractor.py %s %s' % (filename, dest))
             transfer_file(converted_file)
     else:
-        print("TODO: upload these files to the txt/ folder on the server and flag it that it needs to be analysed");
+        print('''TODO: upload these files to the txt/ folder on the server and
+                 flag it that it needs to be analysed''')
 
 
 # -----------------------------------------------------------------------------

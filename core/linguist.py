@@ -407,115 +407,30 @@ def attribs(sents, chunks, nes, ldas):
 
     nes_merged = dict([(' '.join(n[0]), n[1]) for n in nes])
     pers_org = dict(filter(lambda t: t[1] == 'PERSON' or t[1] == 'ORGANIZATION', nes_merged.items()))
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     # dictionary of dictionaries for each named entity
     retrieved = {}
-    # retrieved = []
+    # Previously found named entity and the most likely candidate for the attributes
     prev_ne = None
+
     for chunked_sent in chunks:
         # filter through all chunks for NPs, get each subtree that may contain attributes next to nouns
         # then create dictionary entry for the named entity/noun if it does not exist
         # and add the adjectives in the bag
-        filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')) # or any(map(lambda l: l[1] in nns, t.leaves())))
+        filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP'))
+
         # merge noun that comes after noun phrase into a noun phrase
         relation = []
 
         for subtree in filtered_chunked_subtrees:
-            # print(subtree)
             ent_key = ' '.join(list(map(lambda t: t[0], subtree.leaves())))
-            print(ent_key)
+
             if (any(word in ent_key for word in pers_org.keys())):
                 prev_ne = ent_key
             elif (prev_ne not in retrieved.keys()):
-                # relation.append(ent_key)
                 retrieved[prev_ne] = [ent_key]
             else:
                 retrieved[prev_ne].append(ent_key)
-            # ind = chunked_sent.index(subtree)
-            # if (ent_key not in retrieved):
-            # if (ind < len(chunked_sent) - 1):
-                # if (chunked_sent[ind + 1][1] in vbs):
-            # if (len(relation) >= 2 and prev_ne != None):
-            #     # retrieved.append(relation)
-            #     # relation = []
-            #     retrieved[prev_ne] = relation
-                # if (pers_org[prev_ne] == "PERSON"):
-                #     for name in prev_ne.split(" "):
-                #         retrieved[name] = relation
-                # relation = []
-                # for porg in pers_org:
-                    # if (porg in " ".join(relation)):
-                        # retrieved[porg]= dict((porg, relation))
-                    # relation = []
-            #         ind = chunked_sent.index(subtree) + 1
-            #         relation = []
-            #         while (ind < len(chunked_sent)):
-            #             if (type(chunked_sent[ind]) is tuple):
-            #                 relation.append([chunked_sent[ind][0]])
-            #             else:
-            #                 words = list(map(lambda t: t[0], chunked_sent[ind].leaves()))
-            #                 not_ent = ' '.join(words)
-            #                 if (not_ent not in nes_merged.keys()):
-            #                     relation.append(words)
-            #             ind += 1
-            #         retrieved.append(ent_key)
-            #         retrieved.append(' '.join(sum(relation, [])))
-            #         if (type(chunked_sent[ind - 1] is tuple))
-            #         retrieved.append(' '.join(list(map(lambda t: t[0], chunked_sent[ind - 1].leaves()))))
-            # else:
-            #     continue
-                # print(chunked_sent[ind + 1])
-        # for t in filtered:
-        #     ind = chunked_sent.index(t)
-        #     # print(ind)
-        #     if ind < len(chunked_sent) - 1:
-        #         nextt = chunked_sent[ind + 1]
-        #     if t.label() == 'NP' and nextt in nns:
-        #         for ne in nes_merged:
-        #             if (t)
-                # t[ind] = nltk.tree.Tree('NP', [ind, nextt])
-                    # print(t[ind])
-                # del t[ind + 1]
-    #     grammar = '''
-    #         ADJ:  {<IN><JJ.*>*<NP>}
-    #         ATTR: {<NP><IN><NP>}
-    #         '''
-    #     regex_chunker = nltk.RegexpParser(grammar) # will split words into groups as in grammar
-    #
-    #     for t in filtered_chunked_subtrees:
-    #         if t.label() == 'NP':
-    #             words = [l[0] for l in t.leaves()]
-    #             pos = nltk.pos_tag(words)
-    #             regex_chunks = regex_chunker.parse(pos)
-    #             print(regex_chunks)
-    #             # the first case in the grammar, e.g. 'beautiful Hawaii'
-    #             for subt in regex_chunks.subtrees():
-    #                 subject = ''
-    #                 if subt.label() == 'NP' or subt.label in nns:
-    #                     # if ne or topic, then it becomes node
-    #                     print(subt)
-    #                     possible_subject = ' '.join([l[0] for l in subt.leaves()])
-    #                     print(possible_subject)
-    #                     if possible_subject in [n[0] for n in nes_merged] or possible_subject in ldas:
-    #                         subject = possible_subject
-    #                         subject_type = nes_merged.get(subject)
-    #
-    #                 attributes_bag = []
-    #                 if subt.label() == 'JJ':
-    #                     # grab all adjectives
-    #                     attributes_bag += [' '.join([l[0] for l in subt.leaves()])]
-    #                 print(attributes_bag)
-    #
-    #             # now add findings to dictionary
-    #             if subject != '':
-    #                 if subject in retrieved.keys():
-    #                     if subject_type in retrieved[subject].keys():
-    #                         retrieved[subject][subject_type] += attributes_bag
-    #                     else:
-    #                         retrieved[subject] = dict((subject_type, attributes_bag))
-    #                 else:
-    #                     retrieved[subject] = dict((subject_type, attributes_bag))
-    #
+
     return retrieved
 
 
@@ -557,9 +472,7 @@ def getrelationships(src, args):
         chunks = ch.sents2chunks(sents)
         nes    = ner.chunks2ne(doc, chunks)
 
-        ats = attribs(  sents, chunks, nes, ldas)
-        print(ats)
-        # attribs(  sents, chunks, nes, ldas)
+        ats = attribs(sents, chunks, nes, ldas)
         # rls = relations(sents, chunks, nes, ldas)
 
         # db = ats
