@@ -158,7 +158,8 @@ def sentence_freq(text, sents):
 
 
 
-#######################################################################################
+###########################################################################################
+
 # -- COMMAND mostfreq ---------------------------------------------------------------------
 def mostfreq(src, args):
     docs = getdocs(src)
@@ -167,7 +168,7 @@ def mostfreq(src, args):
     freqs = word_freq(words)
     sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
 
-    return "The most frequent word in this text is " + sortedfreqs[0][0] + ", appearing " + sortedfreqs[0][1] + " times."
+    return sortedfreqs 
 
 
 
@@ -256,7 +257,7 @@ def getsummary(src, args):
 
     del st
 
-    return [ ' '.join(summary) for summary in summaries][0]
+    return summaries
 
 
 
@@ -305,25 +306,8 @@ def getentities(src, args):
 
     docs  = getdocs(src)
 
+    return ne(docs, model)
 
-    ntype = int(args[1])
-    nes_filter_dict = { 0: 'PERSON', 1: 'LOCATION', 2: 'TIME', 3: 'ORGANIZATION' }
-
-    nes = ne(docs, model)
-#    print(nes)
-
-    selected_nes = list(filter(lambda n: n[1] == nes_filter_dict[ntype], nes))
-    just_nes = [' '.join(ne[0]) for ne in selected_nes]
-
-    if len(just_nes) == 0:
-        text = "I'm sorry, I don't think there is any " + nes_filter_dict[ntype].lower() + " in your document."
-    elif len(just_nes) == 1:
-        text = "The " + nes_filter_dict[ntype].lower() + " in your document is " + just_nes[0]
-    else:
-        text = "The documents contain information about " + ', '.join(just_nes[:-1]) + " and " + just_nes[-1]
-    return text
-
- #   return ne(docs, model)
 
 
 
@@ -632,15 +616,71 @@ def getquestiontype(text, args):
 
     return c
 
+
+
 ##########################################################################################
+''' 
+These functions format the output for the 'conversational' web interface
+'''
+
+# TODO: prints the overall most frequent word overall texts
+def prettifyMostFreq(sortedfreqs):
+    text =  "The most frequent word in this text is {} appearing {} times."
+
+    return text.format(sortedfreqs[0][0], sortedfreqs[0][1])
+
+
+# TODO: prints the summary of only the first text
+def prettifySummary(summaries):
+    return [ ' '.join(summary) for summary in summaries][0]
+
+
+# TODO: prints nes only for the fist text
+def prettifyEntitites(nes, ntype):
+    selected_nes = list(filter(lambda n: n[1] == nes_filter_dict[ntype], nes))
+    just_nes = [' '.join(ne[0]) for ne in selected_nes]
+
+    nes_filter_dict = { 0: 'PERSON', 1: 'LOCATION', 2: 'TIME', 3: 'ORGANIZATION' }
+    type_name = nes_filter_dict[ntype].lower()
+
+    text0 = "I'm sorry, I don't think there is any " + type_name + " in your document." 
+    text1 = "The " + type_name + " in your document is {}."
+    textn = "The documents contain information about {} and {}."
+
+    if len(just_nes) == 0:
+        text = text0
+    elif len(just_nes) == 1:
+        text = text1.format(just_nes[0])
+    else:
+        text = textn.format(', '.join(just_nes[:-1]), just_nes[-1])
+
+    return text
+
+
+# TODO: Gensim research. The output of topic modelling can be improved.  We need to use the wiki dictionary, and process the documents separately, selectively. Also, how do we extract a single topic from a vector of topics? Very naive implementation above in gettopics
+def prettifyTopics(topics):
+    just_topics = sorted(set([t[0] for t in topics.items()]), reverse=True)
+    text = "The document you gave me to read is about {} and also mentions {} and {} rather insistently."
+
+    return text.format(just_topics[0], just_topics[1], just_topics[2])
+
+
+
+
+
+##########################################################################################
+'''
+Use script by calling $ python linguist.py <command> <source>
+
+'''
 
 commands = {
+    'mostfreq': mostfreq,
     'summary': getsummary,
     'entities': getentities,
     'topics': gettopics,
     'relationships': getrelationships,
     'question': getquestiontype,
-    'mostfreq': mostfreq,
     # 'similar': todo
 }
 
