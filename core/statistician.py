@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#/develop/Seek/seek-env/bin/python3.4
 import sys, os, string, logging, pprint, json, subprocess
 import regex as re
 from datetime import datetime
@@ -14,6 +15,7 @@ from gensim.corpora import WikiCorpus, wikicorpus, TextCorpus, MmCorpus, Diction
 from gensim.models import LogEntropyModel
 from gensim.similarities import Similarity
 from nltk.tag.stanford import StanfordNERTagger
+import gensim
 
 # -- SENTENCE TOKENIZER ---------------------------------------------------
 '''
@@ -362,25 +364,11 @@ re-run init.py to refresh the pickle.
 '''
 class TopicModelling():
     def __init__(self):
-        # -------------------------------------- Wikipedia training ------------------------------ #
-        #                                                                                          #
-        # print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")  #
-        #                                                                                          #
-        # # load the corpus of documents in the wikipedia archive and save parsed files to disk    #
-        # self.wiki_corpus = WikiCorpus(wiki_src)                                                  #
-        # self.wiki_dictionary = self.wiki_corpus.dictionary                                       #
-        # self.wiki_dictionary.save(dict_src)                                                      #
-        # MmCorpus.serialize(corp_src, self.wiki_corpus)                                           #
-        #                                                                                          #
-        # print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")     #
-        # ---------------------------------------------------------------------------------------- #
-
-        # Working with persisted corpus and dictionary
 #       print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")
         wiki_src = '/disk100/wiki/xml/enwiki-articles.xml.bz2'
         dict_src = '/disk100/wiki/wiki_dictionary.dict'
         corp_src = '/disk100/wiki/wiki_corpus.mm'
-
+        logent_src = '/disk100/wiki/logent.model'
         # load the corpus of documents in the wikipedia archive and save parsed files to disk
 #        self.wiki_corpus = WikiCorpus(wiki_src)
 #        self.wiki_dictionary = self.wiki_corpus.dictionary
@@ -390,15 +378,14 @@ class TopicModelling():
   # Working with persisted corpus and dictionary
         self.wiki_corpus = MmCorpus(corp_src)  # Revive a corpus using the Lazarus pit
         self.wiki_dictionary = Dictionary.load(dict_src)  # Load a dictionary
-
+        #self.logent_transformation = LogEntropyModel.load(logent_src)
 #       print(str(datetime.now()) + ": Trained gensim dictionary for the Wikipedia corpus.")
 
 
-        # self.logent_transformation = LogEntropyModel(self.wiki_corpus, self.wiki_dictionary)
-        # self.logent_corpus = MmCorpus(self.logent_transformation[self.wiki_corpus])
-        # self.logent_transformation.save("/disk100/wiki/logent.model")
-        # MmCorpus.serialize('/disk100/wiki/logent_corpus.mm', self.logent_corpus)
-        # print(str(datetime.now()) + ": Trained logent corpus and transformation")
+#        self.logent_transformation = LogEntropyModel(self.wiki_corpus, id2word=self.wiki_dictionary)
+        #self.logent_corpus = MmCorpus(corpus=self.logent_transformation[self.wiki_corpus])
+#        self.logent_transformation.save("/disk100/wiki/logent.model")
+        #MmCorpus.serialize('/disk100/wiki/logent_corpus.mm', self.logent_corpus)
 
     # extract topics with lda
     # lda_text: tokenized text that has already been processed for stopwords, collocations, MWEs, normalization etc
@@ -425,23 +412,17 @@ class TopicModelling():
         pairs = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
         return dict(pairs)
 
-    def getsimilardocs(self, title, lsi_text, docs, index_documents, query, num):
-      bow_doc = self.wiki_dictionary.doc2bow(wikicorpus.tokenize(lsi_text))
-      logent_doc = self.logent_transformation[[bow_doc]]
-      training_bow_docs = (self.wiki_dictionary.doc2bow(wikicorpus.tokenize(document))
-                            for document in docs)
-      logent_documents = self.logent_transformation[training_bow_docs]
+    def getsimilardocs(self, lsi_text, query, num):
 
-      lsi_transformation = gensim.models.lsimodel.LsiModel(corpus=logent_corpus, id2word=self.wiki_dictionary, num_features=num)
+      lsi_transformation = gensim.models.lsimodel.LsiModel(corpus=self.wiki_corpus, id2word=self.wiki_dictionary, num_topics=num)
       lsi_transformation.save("/disk100/wiki/lsi.model")
 
-      corpus = (self.wiki_dictionary.doc2bow(wikicorpus.tokenize(doc))
-                    for doc in index_documents)
+      corpus = [self.wiki_dictionary.doc2bow(lsi_text)]
 
-      index = Similarity(corpus=lsi_transformation[logent_transformation[corpus]],
-                        num_features=num, output_prefix="shard")
+      index = Similarity(lsi_transformation[self.wiki_corpus], num_topics=num, output_prefix="shard")
 
-      sims_to_query = index[lsi_transformation[logent_transformation[self.wiki_dictionary.doc2bow(wikicorpus.tokenize(query))]]]
+      index.save('/disk100/wiki/wiki_similarity.index')
+      sims_to_query = index[lsi_transformation[corpus]]
       best_score = max(sims_to_query)
       index = sims_to_query.tolist().index(best_score)
       most_similar_doc = docs[index]
@@ -485,7 +466,7 @@ class NERComboTagger(StanfordNERTagger):
 
 class NameEntityDetector():
     def __init__(self):
-        self.classifier_path1 = os.environ.get('STANFORD_MODELS') + '/seek5.ser.gz'
+        self.classifier_path1 = str(os.environ.get('STANFORD_MODELS')) + '/seek5.ser.gz'
         self.name_tagger = NERComboTagger(self.classifier_path1,stanford_ner_models=self.classifier_path1)
         self.name_tagger._stanford_jar = os.environ.get("CLASSPATH")
 
@@ -514,6 +495,9 @@ class NameEntityDetector():
                         ent_key.append(t[0])
 
                 if (all(word in ent_key for word in person_entities.keys())):
+                    joined = ' '.join(ent_key)
+                    if (joined not in ent_key):
+                        ent_key.append(joined)
                     answered.append((ent_key, "PERSON"))
                 if (any(word in ent_key for word in organization_entities.keys())):
                     answered.append((ent_key, "ORGANIZATION"))

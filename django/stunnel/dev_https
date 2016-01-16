@@ -1,0 +1,12 @@
+" <django_project_root>/stunnel/dev_https
+pid = 
+cert = stunnel/stunnel.pem
+output = stunnel/stunnel.log
+sslVersion - SSLv3
+foreground = yes
+debug = 7
+
+[https]
+accept = 0.0.0.0:8002
+connect = 0.0.0.0:8001
+TIMEOUTclose = 1

@@ -23,6 +23,7 @@ hostmachine=`hostname`
 if [[ $hostmachine == 'cloud-vm-45-110' ]]; then
   ## Path on the server!
   export NLTK_DATA="/usr/local/share/nltk_data"
+  export JAVA_HOME="/usr/lib/jvm/java-8-oracle"
 else
   ## Path on local machines
   export NLTK_DATA="$HOME/nltk_data"
