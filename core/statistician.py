@@ -501,6 +501,7 @@ class NameEntityDetector():
         person_entities = dict(filter(lambda x: x[1] == 'PERSON', named_entities.items()))
         organization_entities = dict(filter(lambda x: x[1] == 'ORGANIZATION', named_entities.items()))
         location_entities = dict(filter(lambda x: x[1] == 'LOCATION', named_entities.items()))
+        date_entities = dict(filter(lambda x: x[1] == 'DATE', named_entities.items()))
         # Create a list to store a more complete mapping of NEs
         answered = []
         for chunked_sent in chunked_sents:
@@ -512,9 +513,10 @@ class NameEntityDetector():
                 for t in subtree.leaves():
                     if (t[0] not in ent_key):
                         ent_key.append(t[0])
-
                 if (all(word in ent_key for word in person_entities.keys())):
                     answered.append((ent_key, "PERSON"))
+                if (any(word in ent_key and word != 'the' for word in date_entities.keys())):
+                    answered.append((ent_key, "DATE"))
                 if (any(word in ent_key for word in organization_entities.keys())):
                     answered.append((ent_key, "ORGANIZATION"))
                 if (any(word in ent_key for word in location_entities.keys())):
@@ -534,7 +536,7 @@ class NameEntityDetector():
         answer = []
         for l in p.stdout.read():
             answer.append(l + "\n")
-        print(list(filter(lambda x: x[1] != 'O', answer)))
+        print(dict(filter(lambda x: x[1] != 'O', answer)))
 
 
 
