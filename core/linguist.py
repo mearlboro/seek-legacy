@@ -26,6 +26,9 @@ from functools import *
 import numpy, nltk, gensim
 from nltk.corpus import stopwords
 from gensim import corpora, models, similarities
+from nltk.chunk.util import *
+from nltk.chunk import *
+from nltk.chunk.regexp import *
 
 # ------------------------------------------------------------------------------------
 ''' import the trained classes from /skills '''
@@ -410,10 +413,59 @@ def relations(sents, chunks, nes, ldas):
     prev_ne = None
     relations = {}
     relation = []
-    for chunked_sent in chunks:
-        # filter through all chunks for NPs, get each subtree that may contain attributes next to nouns
-        # then create dictionary entry for the named entity/noun if it does not exist
-        # and add the adjectives in the bag
+    if len(chunks) > 1:
+        for chunked_sent in chunks:
+            # filter through all chunks for NPs, get each subtree that may contain attributes next to nouns
+            # then create dictionary entry for the named entity/noun if it does not exist
+            # and add the adjectives in the bag
+            filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP' or t.label() == 'CD'))
+            # merge noun that comes after noun phrase into a noun phrase
+            # for subtree in filtered_chunked_subtrees:
+            for subtree in chunked_sent.subtrees():
+                # relation.extend([t[0] for t in subtree.leaves() if t[1] in vbs])
+                if subtree in filtered_chunked_subtrees:
+                    ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs])
+                    if ent_key != "":
+                        if any(word in ent_key for word in pers_org.keys()):
+                            prev_ne = ent_key
+                        elif prev_ne not in retrieved.keys():
+                            retrieved[prev_ne] = [ent_key]
+                        else:
+                            retrieved[prev_ne].append(ent_key)
+
+                    # if prev_ne != None:
+                    #     if prev_ne not in relations.keys():
+                    #         if len(relation) > 0:
+                    #             relations[prev_ne] = relation
+                    #     else:
+                    #         if len(relation) > 0:
+                    #             relations[prev_ne].append(' '.join(relation).strip())
+                    #     relation = []
+                # else:
+                    # relationships = [t[0] for t in subtree.leaves() if t[1] in vbs]
+                    # print(relationships)
+                else:
+                    from nltk import nonterminals, Production, CFG
+                    S, NP, VP, PP = nonterminals('S, NP, VP, PP')
+                    N, V, P, Det = nonterminals('N, V, P, Det')
+                    prods = subtree.productions()[0].rhs()
+                    for prod in prods:
+                        if prod == NP:
+                            if prev_ne != None:
+                                if prev_ne not in relations.keys():
+                                    if len(relation) > 0:
+                                        relations[prev_ne] = relation
+                                else:
+                                    if len(relation) > 0:
+                                        relations[prev_ne].append(' '.join(relation).strip())
+                                relation = []
+                        else:
+                            if prod[1] in vbs:
+                                relation.append(prod[0])
+                            elif prod[1] == 'IN':
+                                relation.append("")
+    elif len(chunks) == 1:
+        chunked_sent = chunks[0]
         filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP' or t.label() == 'CD'))
         # merge noun that comes after noun phrase into a noun phrase
         # for subtree in filtered_chunked_subtrees:
@@ -428,38 +480,15 @@ def relations(sents, chunks, nes, ldas):
                         retrieved[prev_ne] = [ent_key]
                     else:
                         retrieved[prev_ne].append(ent_key)
-            if prev_ne != None:
-                if prev_ne not in relations.keys():
-                    if len(relation) > 0:
-                        relations[prev_ne] = relation
-                else:
-                    if len(relation) > 0:
-                        relations[prev_ne].append(' '.join(relation).strip())
-                relation = []
-            # else:
-            #     relationships = [t[0] for t in subtree.leaves() if t[1] in vbs]
-            #     # print(relationships)
-            #     from nltk import nonterminals, Production, CFG
-            #     S, NP, VP, PP = nonterminals('S, NP, VP, PP')
-            #     N, V, P, Det = nonterminals('N, V, P, Det')
-            #     prods = subtree.productions()[0].rhs()
-            #     for prod in prods:
-            #         if prod == NP:
-            #             if prev_ne != None:
-            #                 if prev_ne not in relations.keys():
-            #                     if len(relation) > 0:
-            #                         print(relation)
-            #                         relations[prev_ne] = relation
-            #                 else:
-            #                     if len(relation) > 0:
-            #                         print(relation)
-            #                         relations[prev_ne].append(' '.join(relation).strip())
-            #                 relation = []
-            #         else:
-            #             if prod[1] in vbs:
-            #                 relation.append(prod[0])
-            #             elif prod[1] == 'IN':
-            #                 relation.append("")
+
+                if prev_ne != None:
+                    if prev_ne not in relations.keys():
+                        if len(relation) > 0:
+                            relations[prev_ne] = relation
+                    else:
+                        if len(relation) > 0:
+                            relations[prev_ne].append(' '.join(relation).strip())
+                    relation = []
     # print(retrieved)
     # print(relations)
 
@@ -514,7 +543,7 @@ def getrelationships(src, args):
                     index += 1
                     if relation != "":
                         prev_rel = relation
-                        for atrb in ats[ent][0:index + 1]:
+                        for atrb in ats[ent][0:index]:
                             # print(atrb, ent)
                             if atrb in nes.keys():
                                 # print(nes[atrb])
@@ -532,7 +561,7 @@ def getrelationships(src, args):
                                 if word in nes.keys():
                                     dbs += [((ent, nes[word]), prev_rel, attributes)]
                         attributes = []
-                        del ats[ent][0:index + 1]
+                        del ats[ent][0:index]
                         index = 1
 
         # db = ats
