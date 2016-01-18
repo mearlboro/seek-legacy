@@ -496,24 +496,32 @@ def getrelationships(src, args):
         for ent in ats.keys():
             prev_rel = None
             index = 1
-            for relation in rels[ent]:
-                attributes = []
-                index += 1
-                if relation != "":
-                    prev_rel = relation
-                    for atrb in ats[ent][0:index]:
-                        # print(atrb, ent)
-                        if atrb in nes.keys():
-                            # print(nes[atrb])
-                            attributes.append((atrb, nes[atrb]))
-                        else:
-                            # print(nes[ent])
-                            attributes.append((atrb, nes[ent]))
-                    # print(attributes)
-                    dbs += [((ent, nes[ent]), prev_rel, attributes)]
+            if ent in rels.keys():
+                for relation in rels[ent]:
                     attributes = []
-                    del ats[ent][0:index]
-                    index = 1
+                    index += 1
+                    if relation != "":
+                        prev_rel = relation
+                        for atrb in ats[ent][0:index]:
+                            # print(atrb, ent)
+                            if atrb in nes.keys():
+                                # print(nes[atrb])
+                                attributes.append((atrb, nes[atrb]))
+                            elif ent in nes.keys():
+                                # print(nes[ent])
+                                attributes.append((atrb, nes[ent]))
+                        # print(attributes)
+
+                        if ent in nes.keys():
+                            dbs += [((ent, nes[ent]), prev_rel, attributes)]
+                        else:
+                            words = ent.split()
+                            for word in words:
+                                if word in nes.keys():
+                                    dbs += [((ent, nes[word]), prev_rel, attributes)]
+                        attributes = []
+                        del ats[ent][0:index]
+                        index = 1
 
         # db = ats
     # dbs += [db]
