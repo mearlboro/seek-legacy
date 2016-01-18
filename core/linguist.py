@@ -403,7 +403,7 @@ def relations(sents, chunks, nes, ldas):
     ins  = [ 'of', 'that', 'which', 'like', 'in', 'at', 'as' ]
 
     nes_merged = dict([(' '.join(n[0]), n[1]) for n in nes])
-    pers_org = dict(filter(lambda t: t[1] == 'PERSON' or t[1] == 'ORGANIZATION', nes_merged.items()))
+    pers_org = dict(filter(lambda t: t[1] == 'PERSON', nes_merged.items()))# or t[1] == 'ORGANIZATION', nes_merged.items()))
     # dictionary of dictionaries for each named entity
     retrieved = {}
     # Previously found named entity and the most likely candidate for the attributes
@@ -418,6 +418,7 @@ def relations(sents, chunks, nes, ldas):
         # merge noun that comes after noun phrase into a noun phrase
         # for subtree in filtered_chunked_subtrees:
         for subtree in chunked_sent.subtrees():
+            print(subtree)
             # print(subtree)
             if subtree in filtered_chunked_subtrees:
                 ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP'])
@@ -493,6 +494,7 @@ def getrelationships(src, args):
         nes    = ner.chunks2ne(doc, chunks)
         ats, rels = relations(sents, chunks, nes, ldas)
         nes = dict([(' '.join(n[0]), n[1]) for n in nes])
+        print(nes)
         for ent in ats.keys():
             prev_rel = None
             index = 1
