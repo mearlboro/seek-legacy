@@ -331,7 +331,8 @@ text2chunks(text):
 
 class ChunkParser():
     def __init__(self):
-        self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
+        # self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
+        self.chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
         # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
     def sent2chunks(self, sentence):
@@ -508,11 +509,12 @@ class NameEntityDetector():
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
-                ent_key = []
+                # ent_key = []
                 # Create Set like list to preserve order
-                for t in subtree.leaves():
-                    if (t[0] not in ent_key):
-                        ent_key.append(t[0])
+                # for t in subtree.leaves():
+                    # if t[0] not in ent_key:
+                        # ent_key.append(t[0])
+                ent_key = [t[0] for t in subtree.leaves() if t[0] in named_entities.keys()]
                 if (all(word in ent_key for word in person_entities.keys())):
                     answered.append((ent_key, "PERSON"))
                 if (any(word in ent_key and word != 'the' for word in date_entities.keys())):
