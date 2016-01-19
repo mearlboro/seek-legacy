@@ -29,6 +29,7 @@ from gensim import corpora, models, similarities
 from nltk.chunk.util import *
 from nltk.chunk import *
 from nltk.chunk.regexp import *
+from nltk import nonterminals, Production, CFG
 
 # ------------------------------------------------------------------------------------
 ''' import the trained classes from /skills '''
@@ -262,7 +263,6 @@ def ne(docs, model):
     ch  = getChunkParser()
     ner = getNameEntityDetector()
 
-    entities = []
     for doc in docs:
         sents  = st.text2sents(doc)
         if model == 0:
@@ -422,11 +422,9 @@ def relations(sents, chunks, nes, ldas):
             # merge noun that comes after noun phrase into a noun phrase
             # for subtree in filtered_chunked_subtrees:
             for subtree in chunked_sent.subtrees():
-                # relation.extend([t[0] for t in subtree.leaves() if t[1] in vbs])
                 if subtree in filtered_chunked_subtrees:
-                    # ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs])
+                    # filter attributes and NEs
                     sentence = [t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs]
-                    # ent_key = ' '.join(sentence)
                     ent_key = []
                     atr = []
                     for key in pers_org.keys():
@@ -439,16 +437,15 @@ def relations(sents, chunks, nes, ldas):
                     atr = ' '.join(atr)
                     if ent_key != "":
                         prev_ne = ent_key
-                        # if any(word in ent_key for word in pers_org.keys()):
-                            # prev_ne = ent_key
-                    elif prev_ne not in retrieved.keys():
+                    if prev_ne not in retrieved.keys():
                         if atr != "":
                             retrieved[prev_ne] = [atr]
                     else:
                         if atr != "":
                             retrieved[prev_ne].append(atr)
                 else:
-                    from nltk import nonterminals, Production, CFG
+                    # Analyze sentence structure, extract and map verbs to right
+                    # NEs
                     S, NP, VP, PP = nonterminals('S, NP, VP, PP')
                     N, V, P, Det = nonterminals('N, V, P, Det')
                     prods = subtree.productions()[0].rhs()
@@ -475,6 +472,7 @@ def relations(sents, chunks, nes, ldas):
         for subtree in chunked_sent.subtrees():
             relation.extend([t[0] for t in subtree.leaves() if t[1] in vbs])
             if subtree in filtered_chunked_subtrees:
+                # Select NE and attributes for single sentence
                 ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs])
                 if ent_key != "":
                     if any(word in ent_key for word in pers_org.keys()):
@@ -483,7 +481,6 @@ def relations(sents, chunks, nes, ldas):
                         retrieved[prev_ne] = [ent_key]
                     else:
                         retrieved[prev_ne].append(ent_key)
-
                 if prev_ne != None:
                     if prev_ne not in relations.keys():
                         if len(relation) > 0:
@@ -492,11 +489,7 @@ def relations(sents, chunks, nes, ldas):
                         if len(relation) > 0:
                             relations[prev_ne].append(' '.join(relation).strip())
                     relation = []
-    # print(retrieved)
-    # print(relations)
-
     return retrieved, relations
-
 
 '''
 Barack Obama is the prezident of the United States.
@@ -525,7 +518,7 @@ def getrelationships(src, args):
 
     for doc in docs:
         db = {}
-
+        # Construct a dictionary of the form: Value of NE, relation, [(attribute, NE tag)]
         sents  = st.text2sents(doc)
         sents  = [list(filter(lambda x: x not in string.punctuation, sent)) for sent in sents]
         ldas   = [l for l in lda2dict(lda([doc], 2))[0]]
@@ -547,15 +540,10 @@ def getrelationships(src, args):
                     if relation != "":
                         prev_rel = relation
                         for atrb in ats[ent][0:index]:
-                            # print(atrb, ent)
                             if atrb in nes.keys():
-                                # print(nes[atrb])
                                 attributes.append((atrb, nes[atrb]))
                             elif ent in nes.keys():
-                                # print(nes[ent])
                                 attributes.append((atrb, nes[ent]))
-                        # print(attributes)
-
                         if ent in nes.keys():
                             dbs += [((ent, nes[ent]), prev_rel, attributes)]
                         else:
@@ -566,13 +554,7 @@ def getrelationships(src, args):
                         attributes = []
                         del ats[ent][0:index]
                         index = 1
-
-        # db = ats
-    # dbs += [db]
-
     return dbs
-
-
 
 # -- COMMAND questions ------------------------------------------------------------------
 '''
@@ -601,7 +583,6 @@ commands = {
     'topics': gettopics,
     'relationships': getrelationships,
     'question': getquestiontype,
-    # 'similar': todo
 }
 
 if len(sys.argv) <= 2:
