@@ -1,30 +1,43 @@
-Welcome, dip sheets!
 ---------------
-DeepShit
+Seek
 ==============
 
-Topic modelling(WIP) tool. Target userbase: The whole world
+Topic modelling tool. Target userbase: The whole world
 
+# Usage
+## Web app
+
+### TODO
+---------------
+# Python package
+---------------
+### Installation
+---------------
+### Basic capabilities
+---------------
+### Basic usage
+---------------
+### Further development
 
 # Current tasks
 ## Phase 1
 - [x] PDF to plain text
-- [ ] Handwritten ßtuff to plain text
-- [X] Text from images
+- [ ] Handwritten stuff to plain text
+- [ ] Text from images
 - [X] Web scraping - Wikipedia(big no no), Arxiv(sensitive bastards), Imperial's Spiral repository(say what?)
-- [ ] Parsing plain text to LDA rules
+- [X] Parsing plain text to LDA rules
 
 ***
 
 ## Phase 2
 - [X] Gatherer - script that runs the integration algorithms and parses the plain text
 - [ ] Analyser - takes plain text ^ connects to database
-- [ ] Assistant - Interface for document/query input, RL (terminal only)
+- [X] Assistant - Interface for document/query input, RL (terminal only)
 
 ***
 
 ## Phase 3
-- [ ] LDA
+- [X] LDA
 - [ ] Topic linking to database 
 - [ ] Weights and links for semantic analysis, knowledge graph
 ### Extensions
@@ -35,8 +48,8 @@ Topic modelling(WIP) tool. Target userbase: The whole world
 ***
 
 ## Phase 4
-- [ ] Visual interface
-- [ ] Speech recognition
+- [X] Visual interface
+- [X] Speech recognition
 
 ***
 
