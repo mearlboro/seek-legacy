@@ -424,15 +424,29 @@ def relations(sents, chunks, nes, ldas):
             for subtree in chunked_sent.subtrees():
                 # relation.extend([t[0] for t in subtree.leaves() if t[1] in vbs])
                 if subtree in filtered_chunked_subtrees:
-                    ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs])
-                    print(ent_key)
+                    # ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs])
+                    sentence = [t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs]
+                    # ent_key = ' '.join(sentence)
+                    ent_key = []
+                    atr = []
+                    for key in pers_org.keys():
+                        for word in sentence:
+                            if word in key.split():
+                                ent_key.append(word)
+                            else:
+                                atr.append(word)
+                    ent_key = ' '.join(ent_key)
+                    atr = ' '.join(atr)
                     if ent_key != "":
-                        if any(word in ent_key for word in pers_org.keys()):
-                            prev_ne = ent_key
-                        elif prev_ne not in retrieved.keys():
-                            retrieved[prev_ne] = [ent_key]
-                        else:
-                            retrieved[prev_ne].append(ent_key)
+                        prev_ne = ent_key
+                        # if any(word in ent_key for word in pers_org.keys()):
+                            # prev_ne = ent_key
+                    elif prev_ne not in retrieved.keys():
+                        if atr != "":
+                            retrieved[prev_ne] = [atr]
+                    else:
+                        if atr != "":
+                            retrieved[prev_ne].append(atr)
                 else:
                     from nltk import nonterminals, Production, CFG
                     S, NP, VP, PP = nonterminals('S, NP, VP, PP')
