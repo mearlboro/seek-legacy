@@ -505,23 +505,42 @@ class NameEntityDetector():
         date_entities = dict(filter(lambda x: x[1] == 'DATE', named_entities.items()))
         # Create a list to store a more complete mapping of NEs
         answered = []
+        multiple_entities = {   "PERSON" : [],
+                                "DATE" : [],
+                                "ORGANIZATION" : [],
+                                "LOCATION" : []
+                            }
         for chunked_sent in chunked_sents:
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
+                # print(subtree)
                 # ent_key = []
                 # Create Set like list to preserve order
                 # for t in subtree.leaves():
                     # if t[0] not in ent_key:
                         # ent_key.append(t[0])
                 ent_key = [t[0] for t in subtree.leaves() if t[0] in named_entities.keys()]
-                if (all(word in ent_key for word in person_entities.keys())):
+                # print(ent_key)
+                if all(word in ent_key for word in person_entities.keys()):
                     answered.append((ent_key, "PERSON"))
-                if (any(word in ent_key and word != 'the' for word in date_entities.keys())):
-                    answered.append((ent_key, "DATE"))
-                if (any(word in ent_key for word in organization_entities.keys())):
+                if any(word in ent_key and word != 'the' for word in date_entities.keys()):
+                    for word in ent_key:
+                        if word in person_entities.keys():
+                            multiple_entities["PERSON"].append(word)
+                        if word in date_entities.keys():
+                            multiple_entities["DATE"].append(word)
+                        if word in organization_entities.keys():
+                            multiple_entities["ORGANIZATION"].append(word)
+                        if word in location_entities.keys():
+                            multiple_entities["LOCATION"].append(word)
+                    for key in multiple_entities.keys():
+                        if len(multiple_entities[key]) > 0:
+                            answered.append((multiple_entities[key], key))
+                    # answered.append((ent_key, "DATE"))
+                if any(word in ent_key for word in organization_entities.keys()):
                     answered.append((ent_key, "ORGANIZATION"))
-                if (any(word in ent_key for word in location_entities.keys())):
+                if any(word in ent_key for word in location_entities.keys()):
                     answered.append((ent_key, "LOCATION"))
         return list(filter(lambda x: x[1] != 'O' and x[1] != None, answered))
 

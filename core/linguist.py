@@ -425,6 +425,7 @@ def relations(sents, chunks, nes, ldas):
                 # relation.extend([t[0] for t in subtree.leaves() if t[1] in vbs])
                 if subtree in filtered_chunked_subtrees:
                     ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs])
+                    print(ent_key)
                     if ent_key != "":
                         if any(word in ent_key for word in pers_org.keys()):
                             prev_ne = ent_key
@@ -432,18 +433,6 @@ def relations(sents, chunks, nes, ldas):
                             retrieved[prev_ne] = [ent_key]
                         else:
                             retrieved[prev_ne].append(ent_key)
-
-                    # if prev_ne != None:
-                    #     if prev_ne not in relations.keys():
-                    #         if len(relation) > 0:
-                    #             relations[prev_ne] = relation
-                    #     else:
-                    #         if len(relation) > 0:
-                    #             relations[prev_ne].append(' '.join(relation).strip())
-                    #     relation = []
-                # else:
-                    # relationships = [t[0] for t in subtree.leaves() if t[1] in vbs]
-                    # print(relationships)
                 else:
                     from nltk import nonterminals, Production, CFG
                     S, NP, VP, PP = nonterminals('S, NP, VP, PP')
