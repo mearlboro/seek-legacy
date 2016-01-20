@@ -331,12 +331,13 @@ text2chunks(text):
 
 class ChunkParser():
     def __init__(self):
-        self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
+        # self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
+        self.chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
         # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
     def sent2chunks(self, sentence):
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
-        # TODO: train chunker on brown if that's the case
+        # train chunker on brown if that's the case
         # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
         tagged_sentence = nltk.pos_tag(tokenized_sentence)
         chunked_sentence = self.chunker.parse(tagged_sentence)
@@ -344,7 +345,7 @@ class ChunkParser():
 
     def sents2chunks(self, tokenized_sentences):
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
-        # TODO: train chunker on brown if that's the case
+        # train chunker on brown if that's the case
         # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
         tagged_sentences = list(map(nltk.pos_tag, tokenized_sentences))
         chunked_sentences = list(map(self.chunker.parse, tagged_sentences))
@@ -504,10 +505,16 @@ class NameEntityDetector():
         date_entities = dict(filter(lambda x: x[1] == 'DATE', named_entities.items()))
         # Create a list to store a more complete mapping of NEs
         answered = []
+        multiple_entities = {   "PERSON" : [],
+                                "DATE" : [],
+                                "ORGANIZATION" : [],
+                                "LOCATION" : []
+                            }
         for chunked_sent in chunked_sents:
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
+<<<<<<< HEAD
                 ent_key = []
                 # Create Set like list to preserve order
                 for t in subtree.leaves():
@@ -518,8 +525,27 @@ class NameEntityDetector():
                 if (any(word in ent_key and word != 'the' for word in date_entities.keys())):
                     answered.append((ent_key, "DATE"))
                 if (any(word in ent_key for word in organization_entities.keys())):
+=======
+                ent_key = [t[0] for t in subtree.leaves() if t[0] in named_entities.keys()]
+                if all(word in ent_key for word in person_entities.keys()):
+                    answered.append((ent_key, "PERSON"))
+                if any(word in ent_key and word != 'the' for word in date_entities.keys()):
+                    for word in ent_key:
+                        if word in person_entities.keys():
+                            multiple_entities["PERSON"].append(word)
+                        if word in date_entities.keys():
+                            multiple_entities["DATE"].append(word)
+                        if word in organization_entities.keys():
+                            multiple_entities["ORGANIZATION"].append(word)
+                        if word in location_entities.keys():
+                            multiple_entities["LOCATION"].append(word)
+                    for key in multiple_entities.keys():
+                        if len(multiple_entities[key]) > 0:
+                            answered.append((multiple_entities[key], key))
+                if any(word in ent_key for word in organization_entities.keys()):
+>>>>>>> 28a7aaca6f0d0a0c05e4cb352cbe4beefb7905ec
                     answered.append((ent_key, "ORGANIZATION"))
-                if (any(word in ent_key for word in location_entities.keys())):
+                if any(word in ent_key for word in location_entities.keys()):
                     answered.append((ent_key, "LOCATION"))
         return list(filter(lambda x: x[1] != 'O' and x[1] != None, answered))
 

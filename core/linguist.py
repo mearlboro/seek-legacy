@@ -22,6 +22,7 @@ import string
 from operator  import *
 from itertools import *
 from functools import *
+from optparse import OptionParser
 
 import numpy, nltk, gensim
 from nltk.corpus import stopwords
@@ -30,6 +31,10 @@ from gensim import corpora, models, similarities
 import logging
 logger = logging.getLogger('handler')
 
+from nltk.chunk.util import *
+from nltk.chunk import *
+from nltk.chunk.regexp import *
+from nltk import nonterminals, Production, CFG
 
 # ------------------------------------------------------------------------------------
 ''' Import the trained classes from /skills '''
@@ -73,7 +78,6 @@ def getdocs(src, pretty):
         if not pretty:
             print("Collecting document " + src + " ...")
         return [open(src, 'r+').read()]
-
 
 
 ######################################################################################
@@ -195,7 +199,7 @@ When summing frequencies per sentence add bias from topics in that phrase
     freqs: the output of sentence_frequency(text, sents)
 '''
 def augment_topics(model, text, sents, freqs):
-    num = 10 # TODO: choose a number that has a relevance!!!
+    num = 10
 
     if model == 0:
         topics = lda2dict(lda([text], num))[1]
@@ -216,7 +220,7 @@ When summing frequencies per sentence add bias from named entities in that phras
     freqs: the output of sentence_frequency(text, sents)
 '''
 def augment_ne(text, sents, freqs):
-    bias = 2 # TODO: meaningful number
+    bias = 2
 
     nes = ne([text], 1) # get single-word NEs by means of text analysis
     nes = [ne[0] for ne in nes] # the words as list
@@ -240,17 +244,19 @@ the presence of topics, named entities, or both in the sentence.
     <args[0]> can be 0 (LDA), 1 (LSI), 2 (NEs), default behaviour is LDA.
     <args[1]> must be an integer representing the number of topics to extract, default number is 10.
 '''
-def getsummary(src, args, pretty):
-    if len(args) < 2:
+def getsummary(option, opt_str, value, parser):
+    args = parser.rargs
+    if len(args) < 4:
         print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
         sys.exit(0)
+    src = args[0]
+    model = args[1]
+    num = int(args[2])
+    pretty = args[3]
 
-    if not pretty:
-        text = "Constructing summary for documents at {} ..."
-        print(text.format(src))
+    text = "Constructing summary for documents at {} ..."
+    print(text.format(src))
 
-    model = args[0]
-    num = args[1]
     docs = getdocs(src, pretty)
 
     st = getSentenceTokenizer()
@@ -264,7 +270,6 @@ def getsummary(src, args, pretty):
         elif model == 2:
             freqs = augment_ne(doc, sents, freqs)
         sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
-
         min_freq = sortedfreqs[num][1]
         summary = [f[0] for f in list(filter(lambda f: f[1] >= min_freq, freqs))]
 
@@ -273,11 +278,9 @@ def getsummary(src, args, pretty):
     del st
 
     if not pretty:
-      return summaries
+      setattr(parser.values, option.dest, summaries)
     else:
-      return prettifysummary(summaries)
-
-
+      setattr(parser.values, option.dest, prettifysummary(summaries))
 
 # -- COMMAND entities --------------------------------------------------------------------
 '''
@@ -296,13 +299,12 @@ def ne(docs, model):
     ch  = getChunkParser()
     ner = getNameEntityDetector()
 
-    entities = []
     for doc in docs:
         sents  = st.text2sents(doc)
         if model == 0:
             chunks = ch.sents2chunks(sents)
             nes    = ner.chunks2ne(doc, chunks)
-        elif model == 1:
+        else:
             nes    = ner.text2ne(doc)
         entities += [nes]
 
@@ -312,16 +314,17 @@ def ne(docs, model):
 
     return entities
 
-
-def getentities(src, args, pretty):
-    if len(args) < 2:
-        print("Incorrect arguments: expected \n linguist.py entities <src> <model> <type>") #TODO
+def getentities(option, opt_str, value, parser):
+    args = parser.rargs
+    if len(args) < 4:
+        print("Incorrect arguments: expected \n linguist.py --entities <src> <model>")
         sys.exit(0)
+    src = args[0]
+    model = args[1]
+    model_name = 'chunk-based' if model else 'text-based'
 
-    model = args[0]
-    model_name = 'chunk-based' if 0 else 'text-based'
-
-    ntype = args[1]
+    ntype = args[2]
+    pretty = args[3]
     if ntype < 0 or ntype > 3:
         print("Incorrect arguments: <type> is 0 (PERSON), 1 (LOCATION), 2 (TIME), 3 (ORGANIZATION)")
     nes_dict = { 0: 'PERSON', 1: 'LOCATION', 2: 'TIME', 3: 'ORGANIZATION' }
@@ -336,18 +339,44 @@ def getentities(src, args, pretty):
     selected_nes = [list(filter(lambda n: n[1] == nes_dict[ntype], nesdoc)) for nesdoc in nes]
 
     if not pretty:
-        return selected_nes
+        setattr(parser.values, option.dest, selected_nes)
     else:
-        return prettifyentities(selected_nes, type_name)
-
-
+        setattr(parser.values, option.dest, prettifyentities(selected_nes, type_name))
 
 
 # -- COMMAND topics ----------------------------------------------------------------------
-# TODO: use the trained class
+
 '''
 Converts output of lsi or lda to a dictionary of words and their weight
 '''
+
+def gettopics(option, opt_str, value, parser):
+    args = parser.rargs
+    if len(args) < 3:
+        print("Incorrect arguments: expected \n linguist.py topics <src> <model> <pretty> <num>")
+        sys.exit(0)
+    src = args[0]
+    model = args[1]
+    model_name = 'LDA' if not model else 'LSI'
+    pretty = args[2]
+    num = args[3]
+    if not pretty:
+        print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
+
+    docs = getdocs(src, pretty)
+    topics = []
+
+    for doc in docs:
+        if model == 1:
+            topics.append(lsi2dict(lsi(docs, args[3])))
+        else:
+            topics.append(lda2dict(lda(docs, args[3]))[0])
+
+    if not pretty:
+        setattr(parser.values, option.dest, topics)
+    else:
+        setattr(parser.values, option.dest, prettifytopics(topics))
+
 def lsi2dict(topics):
     topics = topics[0][1].split('+')
     pairs  = [topic.split('*') for topic in topics]
@@ -369,7 +398,6 @@ def lda2dict(topics):
 Get lsi and lda topics 
 '''
 def lsi(docs, num):
-    # TODO: chunk mwes and collocations if necessary.
     # tokenize each doc, filter punctuation and stop words
     docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
     filtered = [f[1] for f in list(map(filter_stop_words, docs))]
@@ -385,7 +413,6 @@ def lsi(docs, num):
 
 
 def lda(docs, num):
-    # TODO: chunk mwes and collocations if necessary.
     # tokenize each doc, filter punctuation and stop words
     docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
     filtered = [f[1] for f in list(map(filter_stop_words, docs))]
@@ -396,43 +423,6 @@ def lda(docs, num):
 
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
     return lda_topics.print_topics(num)
-
-
-'''
-Extracts topics by either LDA or LSI model, depending on args.
-    <src> is a file or directory
-    <args[0]> can be 0 (LDA) or 1 (LSI), default behaviour is LDA.
-    <args[1]> must be an integer representing the number of topics to extract, default number is 10.
-'''
-
-def gettopics(src, args, pretty):
-    if len(args) < 2:
-        print("Incorrect arguments: expected \n linguist.py topics <src> <model> <num>")
-        sys.exit(0)
-
-    model = args[0]
-    model_name = 'LDA' if 0 else 'LSI'
-
-    if not pretty:
-        print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
-
-
-    docs = getdocs(src, pretty)
-    topics = []
-
-    for doc in docs:
-        if model == 1:
-            topics.append(lsi2dict(lsi(docs, args[1])))
-        else:
-            topics.append(lda2dict(lda(docs, args[1]))[0])
-
-    if not pretty:
-        return topics
-    else:
-        return prettifytopics(topics)
-
-
-
 
 # -- COMMAND relationships ---------------------------------------------------------------
 '''
@@ -461,7 +451,7 @@ def parse_NP(tree):
     return []
 
 
-def attribs(sents, chunks, nes, ldas):
+def relations(sents, chunks, nes, ldas):
 
     adjs = [ 'JJ', 'JJR', 'JJS' ]
     vbs  = [ 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ' ]
@@ -469,113 +459,90 @@ def attribs(sents, chunks, nes, ldas):
     ins  = [ 'of', 'that', 'which', 'like', 'in', 'at', 'as' ]
 
     nes_merged = dict([(' '.join(n[0]), n[1]) for n in nes])
-    pers_org = dict(filter(lambda t: t[1] == 'PERSON' or t[1] == 'ORGANIZATION', nes_merged.items()))
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    pers_org = dict(filter(lambda t: t[1] == 'PERSON', nes_merged.items()))
     # dictionary of dictionaries for each named entity
     retrieved = {}
-    # retrieved = []
-    for chunked_sent in chunks:
-        # filter through all chunks for NPs, get each subtree that may contain attributes next to nouns
-        # then create dictionary entry for the named entity/noun if it does not exist
-        # and add the adjectives in the bag
-        filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')) # or any(map(lambda l: l[1] in nns, t.leaves())))
+    # Previously found named entity and the most likely candidate for the attributes
+    prev_ne = None
+    relations = {}
+    relation = []
+    if len(chunks) > 1:
+        for chunked_sent in chunks:
+            # filter through all chunks for NPs, get each subtree that may contain attributes next to nouns
+            # then create dictionary entry for the named entity/noun if it does not exist
+            # and add the adjectives in the bag
+            filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP' or t.label() == 'CD'))
+            # merge noun that comes after noun phrase into a noun phrase
+            # for subtree in filtered_chunked_subtrees:
+            for subtree in chunked_sent.subtrees():
+                if subtree in filtered_chunked_subtrees:
+                    # filter attributes and NEs
+                    sentence = [t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs]
+                    ent_key = []
+                    atr = []
+                    for key in pers_org.keys():
+                        for word in sentence:
+                            if word in key.split():
+                                ent_key.append(word)
+                            else:
+                                atr.append(word)
+                    ent_key = ' '.join(ent_key)
+                    atr = ' '.join(atr)
+                    if ent_key != "":
+                        prev_ne = ent_key
+                    if prev_ne not in retrieved.keys():
+                        if atr != "":
+                            retrieved[prev_ne] = [atr]
+                    else:
+                        if atr != "":
+                            retrieved[prev_ne].append(atr)
+                else:
+                    # Analyze sentence structure, extract and map verbs to right
+                    # NEs
+                    S, NP, VP, PP = nonterminals('S, NP, VP, PP')
+                    N, V, P, Det = nonterminals('N, V, P, Det')
+                    prods = subtree.productions()[0].rhs()
+                    for prod in prods:
+                        if prod == NP:
+                            if prev_ne != None:
+                                if prev_ne not in relations.keys():
+                                    if len(relation) > 0:
+                                        relations[prev_ne] = relation
+                                else:
+                                    if len(relation) > 0:
+                                        relations[prev_ne].append(' '.join(relation).strip())
+                                relation = []
+                        else:
+                            if prod[1] in vbs:
+                                relation.append(prod[0])
+                            elif prod[1] == 'IN':
+                                relation.append("")
+    elif len(chunks) == 1:
+        chunked_sent = chunks[0]
+        filtered_chunked_subtrees = list(chunked_sent.subtrees(filter= lambda t: t.label() == 'NP' or t.label() == 'CD'))
         # merge noun that comes after noun phrase into a noun phrase
-        relation = []
-        prev_ne = None
-        for subtree in filtered_chunked_subtrees:
-            # print(subtree)
-            ent_key = ' '.join(list(map(lambda t: t[0], subtree.leaves())))
-            if (any(word in ent_key for word in pers_org.keys())):
-                prev_ne = ent_key
-            else:
-                relation.append(ent_key)
-            # ind = chunked_sent.index(subtree)
-            # if (ent_key not in retrieved):
-            # if (ind < len(chunked_sent) - 1):
-                # if (chunked_sent[ind + 1][1] in vbs):
-            if (len(relation) >= 2 and prev_ne != None):
-                # retrieved.append(relation)
-                # relation = []
-                retrieved[prev_ne] = relation
-                # if (pers_org[prev_ne] == "PERSON"):
-                #     for name in prev_ne.split(" "):
-                #         retrieved[name] = relation
-                relation = []
-                # for porg in pers_org:
-                    # if (porg in " ".join(relation)):
-                        # retrieved[porg]= dict((porg, relation))
-                    # relation = []
-            #         ind = chunked_sent.index(subtree) + 1
-            #         relation = []
-            #         while (ind < len(chunked_sent)):
-            #             if (type(chunked_sent[ind]) is tuple):
-            #                 relation.append([chunked_sent[ind][0]])
-            #             else:
-            #                 words = list(map(lambda t: t[0], chunked_sent[ind].leaves()))
-            #                 not_ent = ' '.join(words)
-            #                 if (not_ent not in nes_merged.keys()):
-            #                     relation.append(words)
-            #             ind += 1
-            #         retrieved.append(ent_key)
-            #         retrieved.append(' '.join(sum(relation, [])))
-            #         if (type(chunked_sent[ind - 1] is tuple))
-            #         retrieved.append(' '.join(list(map(lambda t: t[0], chunked_sent[ind - 1].leaves()))))
-            # else:
-            #     continue
-                # print(chunked_sent[ind + 1])
-        # for t in filtered:
-        #     ind = chunked_sent.index(t)
-        #     # print(ind)
-        #     if ind < len(chunked_sent) - 1:
-        #         nextt = chunked_sent[ind + 1]
-        #     if t.label() == 'NP' and nextt in nns:
-        #         for ne in nes_merged:
-        #             if (t)
-                # t[ind] = nltk.tree.Tree('NP', [ind, nextt])
-                    # print(t[ind])
-                # del t[ind + 1]
-    #     grammar = '''
-    #         ADJ:  {<IN><JJ.*>*<NP>}
-    #         ATTR: {<NP><IN><NP>}
-    #         '''
-    #     regex_chunker = nltk.RegexpParser(grammar) # will split words into groups as in grammar
-    #
-    #     for t in filtered_chunked_subtrees:
-    #         if t.label() == 'NP':
-    #             words = [l[0] for l in t.leaves()]
-    #             pos = nltk.pos_tag(words)
-    #             regex_chunks = regex_chunker.parse(pos)
-    #             print(regex_chunks)
-    #             # the first case in the grammar, e.g. 'beautiful Hawaii'
-    #             for subt in regex_chunks.subtrees():
-    #                 subject = ''
-    #                 if subt.label() == 'NP' or subt.label in nns:
-    #                     # if ne or topic, then it becomes node
-    #                     print(subt)
-    #                     possible_subject = ' '.join([l[0] for l in subt.leaves()])
-    #                     print(possible_subject)
-    #                     if possible_subject in [n[0] for n in nes_merged] or possible_subject in ldas:
-    #                         subject = possible_subject
-    #                         subject_type = nes_merged.get(subject)
-    #
-    #                 attributes_bag = []
-    #                 if subt.label() == 'JJ':
-    #                     # grab all adjectives
-    #                     attributes_bag += [' '.join([l[0] for l in subt.leaves()])]
-    #                 print(attributes_bag)
-    #
-    #             # now add findings to dictionary
-    #             if subject != '':
-    #                 if subject in retrieved.keys():
-    #                     if subject_type in retrieved[subject].keys():
-    #                         retrieved[subject][subject_type] += attributes_bag
-    #                     else:
-    #                         retrieved[subject] = dict((subject_type, attributes_bag))
-    #                 else:
-    #                     retrieved[subject] = dict((subject_type, attributes_bag))
-    #
-    return retrieved
-
+        # for subtree in filtered_chunked_subtrees:
+        for subtree in chunked_sent.subtrees():
+            relation.extend([t[0] for t in subtree.leaves() if t[1] in vbs])
+            if subtree in filtered_chunked_subtrees:
+                # Select NE and attributes for single sentence
+                ent_key = ' '.join([t[0] for t in subtree.leaves() if t[1] != 'PRP' and t[1] not in vbs])
+                if ent_key != "":
+                    if any(word in ent_key for word in pers_org.keys()):
+                        prev_ne = ent_key
+                    elif prev_ne not in retrieved.keys():
+                        retrieved[prev_ne] = [ent_key]
+                    else:
+                        retrieved[prev_ne].append(ent_key)
+                if prev_ne != None:
+                    if prev_ne not in relations.keys():
+                        if len(relation) > 0:
+                            relations[prev_ne] = relation
+                    else:
+                        if len(relation) > 0:
+                            relations[prev_ne].append(' '.join(relation).strip())
+                    relation = []
+    return retrieved, relations
 
 '''
 Barack Obama is the prezident of the United States.
@@ -590,10 +557,11 @@ is(barack, prezinf)
 
 person(barack, prezindent of the united states, born in hawaii
 '''
-def relations(sents, chunks, nes, ldas):
-    return {}
 
-def getrelationships(src, args):
+def getrelationships(option, opt_str, value, parser):
+    args = parser.rargs
+    src = args[0]
+    args = args[1:]
     print("Extracting information from documents at " + src + " ...")
 
     docs = getdocs(src)
@@ -606,42 +574,52 @@ def getrelationships(src, args):
 
     for doc in docs:
         db = {}
-
+        # Construct a dictionary of the form: Value of NE, relation, [(attribute, NE tag)]
         sents  = st.text2sents(doc)
         sents  = [list(filter(lambda x: x not in string.punctuation, sent)) for sent in sents]
         ldas   = [l for l in lda2dict(lda([doc], 2))[0]]
-        nes    = [ne[0] for ne in ner.text2ne(doc)]
+        regular_nes = list(ner.text2ne(doc))
+        date_nes = dict(filter(lambda t: t[1] == "DATE", regular_nes))
+        nes    = [ne[0] for ne in regular_nes]
         sents  = list(filter(lambda sent: any([t in sent for t in ldas]) or any([ne in sent for ne in nes]), sents))
         chunks = ch.sents2chunks(sents)
         nes    = ner.chunks2ne(doc, chunks)
-        
-        ats = attribs(  sents, chunks, nes, ldas)
-        #print(ats)
-        # attribs(  sents, chunks, nes, ldas)
-        # rls = relations(sents, chunks, nes, ldas)
-
-        # db = ats
-    dbs += [db]
-
-    # I Change the return statement FROM: return (dbs, nes) TO: return (ats, nes)
-    return (ats, nes)
-
-
-# --- Adds information to database
-
-def addEntitiesToDatabase():
-    print("p")
-
+        ats, rels = relations(sents, chunks, nes, ldas)
+        nes = dict([(' '.join(n[0]), n[1]) for n in nes])
+        for ent in ats.keys():
+            prev_rel = None
+            index = 1
+            if ent in rels.keys():
+                for relation in rels[ent]:
+                    attributes = []
+                    index += 1
+                    if relation != "":
+                        prev_rel = relation
+                        for atrb in ats[ent][0:index]:
+                            if atrb in nes.keys():
+                                attributes.append((atrb, nes[atrb]))
+                            elif ent in nes.keys():
+                                attributes.append((atrb, nes[ent]))
+                        if ent in nes.keys():
+                            dbs += [((ent, nes[ent]), prev_rel, attributes)]
+                        else:
+                            words = ent.split()
+                            for word in words:
+                                if word in nes.keys():
+                                    dbs += [((ent, nes[word]), prev_rel, attributes)]
+                        attributes = []
+                        del ats[ent][0:index]
+                        index = 1
+    setattr(parser.values, option.dest, dbs)
 
 # -- COMMAND questions ------------------------------------------------------------------
-# TODO CURRENTLY NOT IN USE
 '''
 Classifies questions based on the question classifier
     <text> is the question in string format
     takes no args
 '''
-def getquestiontype(text, args):
-
+def getquestiontype(option, opt_str, value, parser):
+    text = parser.rargs[0]
     qc  = getQuestionClassifier()
     ner = getNameEntityDetector()
 
@@ -650,8 +628,7 @@ def getquestiontype(text, args):
 
     del qc
     del ner
-
-    return c
+    setattr(parser.values, option.dest, c)
 
 
 
@@ -665,13 +642,9 @@ def prettifymostfreq(sortedfreqs):
 
     return text.format(sortedfreqs[0][0][0], sortedfreqs[0][0][1])
 
-
-# TODO: prints the summary of only the first text
 def prettifysummary(summaries):
     return [ ' '.join(summary) for summary in summaries][0]
 
-
-# TODO: prints nes only for the fist text
 def prettifyentities(nes, type_name):
     just_nes = [[ne[0] for ne in docne] for docne in nes][0]
 
@@ -688,8 +661,6 @@ def prettifyentities(nes, type_name):
 
     return text
 
-
-# TODO: Gensim research. The output of topic modelling can be improved.  We need to use the wiki dictionary, and process the documents separately, selectively. Also, how do we extract a single topic from a vector of topics? Very naive implementation above in gettopics
 def prettifytopics(topics):
     just_topics = sorted(set([t[0] for t in topics.items()]), reverse=True)
     text = 'The document you gave me to read is about "{}" and also mentions "{}" and "{}" rather insistently.'
@@ -700,37 +671,13 @@ def prettifyrelationships(relationships):
     return "TODO:"
 
 
-
-
 ##########################################################################################
-'''
-Use script by calling $ python linguist.py <command> <source>
+parser = OptionParser()
+parser.add_option("-e", "--entities", help="Extract named entities", action="callback", callback=getentities, dest="output")
+parser.add_option("-s", "--summary", help="Offer summary of text", action="callback", callback=getsummary, dest="output")
+parser.add_option("-t", "--topics", help="Extract topics from text", action="callback", callback=gettopics, dest="output")
+parser.add_option("-r", "--relationships", help="Extract relationships from text", action="callback", callback=getrelationships, dest="output")
+parser.add_option("-q", "--question", help="Classify questions", action="callback", callback=getquestiontype, dest="output")
 
-'''
-commands = {
-    'mostfreq'     : getmostfreq,
-    'summary'      : getsummary,
-    'entities'     : getentities,
-    'topics'       : gettopics,
-    'relationships': getrelationships,
-}
-
-if len(sys.argv) <= 2:
-    print("the linguist expects the following command \n linguist.py <command> <prettyprint> <src>")
-    sys.exit(0)
-if len(sys.argv) > 2:
-    com  = sys.argv[1]           # command
-    pr   = sys.argv[2]           # pretty print if != 0
-    src  = sys.argv[3]           # file or folder to read from
-    args = [0]
-    if len(sys.argv) > 4:
-        args = int(sys.argv[4]), int(sys.argv[5])   # extra arguments required by some functions
-
-    if not pr:
-         print("Executing linguist " + com + " on " + src + " ...")
- 
-    if commands.get(com, False):
-        print(commands[com](src, args, pr))
-    else:
-        print("<command> can be \n mostfreq \n summary \n entities \n topics \n relationships \n question ")
-        sys.exit(0)
+(options, args) = parser.parse_args()
+print(options.output)
