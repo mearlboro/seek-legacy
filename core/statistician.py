@@ -331,8 +331,7 @@ text2chunks(text):
 
 class ChunkParser():
     def __init__(self):
-        # self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
-        self.chunker = nltk.data.load("chunkers/treebank_chunk_ub.pickle")
+        self.chunker = nltk.data.load("chunkers/treebank_chunk_NaiveBayes.pickle")
         # self.tagger = nltk.data.load("taggers/brown_aubt.pickle")
 
     def sent2chunks(self, sentence):
