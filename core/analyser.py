@@ -5,6 +5,8 @@ import os
 import glob
 import sys
 import numpy
+import linguist
+from py2neo import (Graph, cypher, Node, Relationship)
 
 """
 This class is meant to analyse questions given as input in natural language and
@@ -55,21 +57,54 @@ while (result.type != location)
 #    }[type]
 
 
-def analyseEntities():
+# Retrieves natural language information from src file
+# and updates the database with the information  
+def updatedatabase(src, graph):
+        print(linguist.getrelationships(src, 0))
+        
+        relations = linguist.getrelationships(src, 0)
+        
+        for sentence in relations:
+                print('HEEEELOOOOOOO ')
+                print(sentence) 
+                (subj, rel, ne_labels) = sentence
+                (ne, label) = subj # ne is the entity's name here
+                subject = Node(label, name=ne)
+                g.merge_one(subject)
+                if(len(ne_labels) == 1):
+                        (ne, label) = ne_labels[0]
+                        complement = Node(label, name=ne)
+                        g.merge_one(complement)
+                        relation = Relationship(subject, rel.upper(), complement)
+                if(len(ne_labels) == 2):
+                        (ne, label) = ne_labels[0]
+                        reltype = ne
+                        (ne, label) = ne_labels[1]
+                        complement = Node(label, name=ne)
+                        g.merge_one(complement)
+                        relation = Relationship(subject, rel.upper(), complement, type=reltype)
+                g.create(relation)
+        
+        p = graph.cypher.execute("MATCH (n : PERSON) RETURN n.name AS name")
+        for n in p:
+                print(n.name)
+     
+    
 
+if (len(sys.argv) < 1):
+        print('source file must be specified')
+else:
+        print('Analyser started retriving information to be stored')
+        print(linguist.getrelationships(sys.argv[1], 0))
+        #g = Graph("http://localhost:7474/db/data/")
+        #g.schema.create_uniqueness_constraint("PERSON", "name")
+        #g.schema.create_uniqueness_constraint("LOCATION", "name")
+ #       updatedatabase(sys.argv[1], g)
 
-  
-
-
-
-class QuestionInterpreter:
-
-
-if  (len(sys.argv) < 3):
-  print("The analyser expects the following command \n 
-          analyse.py <command> <question>")
+#if  (len(sys.argv) < 3):
+#  print("The analyser expects the following command \n analyse.py <command> <question>")
 
 # A query is given. We need to analyse the query and return a result
-if (sys.argv[1] == "-a"):
-  print("TODO: question-to-answer")
+#if (sys.argv[1] == "-a"):
+#  print("TODO: question-to-answer")
 
