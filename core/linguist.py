@@ -28,11 +28,11 @@ from nltk.corpus import stopwords
 from gensim import corpora, models, similarities
 
 import logging
-
 logger = logging.getLogger('handler')
 
+
 # ------------------------------------------------------------------------------------
-''' import the trained classes from /skills '''
+''' Import the trained classes from /skills '''
 def getSentenceTokenizer():
     with open('skills/init_sent_tok.pkl','rb') as infile:
         st = pickle.load(infile)
@@ -59,17 +59,19 @@ def getQuestionClassifier():
     return qc
 
 
-''' Get text from document or directory '''
-def getdocs(src):
-    logger.error(src)
+''' Get text from document or directory. '''
+def getdocs(src, pretty):
     if os.path.isdir(src):
-#        print("Collecting documents at directory " + src + " ...")
+        if not pretty:
+            print("Collecting documents at directory " + src + " ...")
+
         documents = []
         for f in glob.glob(os.path.join(src, '*.txt')):
             documents += [open(f, 'r+').read()]
         return documents
     if os.path.isfile(src):
-#        print("Collecting document " + src + " ...")
+        if not pretty:
+            print("Collecting document " + src + " ...")
         return [open(src, 'r+').read()]
 
 
@@ -77,7 +79,7 @@ def getdocs(src):
 ######################################################################################
 ''' Helper functions for NLP '''
 
-# Get the vocabulary of a document split in toks.
+# Get the vocabulary of a document split in tokens.
 def vocab(toks):
     voc = []
     voc = sorted(set(voc + sorted(set([w.lower() for w in toks]))))
@@ -85,19 +87,19 @@ def vocab(toks):
 
 
 # Get the word frequencies of a set of tokens.
-# The results of this function can be simply added for multiple texts
+# The results of this function can be simply added for multiple texts.
 def word_freq(toks):
     freqs  = nltk.FreqDist([w.lower() for w in toks])
     return freqs
 
 
-# Filter punctuation
+# Filter punctuation.
 def filter_punct(toks):
     words = list(filter(lambda w: w not in string.punctuation, toks))
     return words
 
 
-# Filter out stop words and irrelevant parts of speech from a set of tokens
+# Filter out stop words and irrelevant parts of speech from a set of tokens.
 def filter_stop_words(toks):
     # List of parts of speech which are not stop words
     # nltk.help.upenn_tagset() to see all
@@ -125,7 +127,7 @@ def filter_stop_words(toks):
 
     # use the tagger to identify part of speech
     parts_of_speech = nltk.pos_tag(toks)
-    # filter out the pos of irrelevant words
+    # filter out the parts of speech of irrelevant words
     parts_of_speech_filter = filter(lambda  pair : pair[1] in filter_pos, parts_of_speech)
     # filter out the nltk stopwords corpus
     corpus_filter = filter(lambda pair : pair[0] not in stopwords_corpus, parts_of_speech_filter)
@@ -138,7 +140,7 @@ def filter_stop_words(toks):
 
 
 
-# Get the weight of each sentence in a text based on frequency
+# Get the weight of each sentence in a text based on frequency.
 def sentence_freq(text, sents):
     # get and filter words
     words = nltk.word_tokenize(text)
@@ -161,15 +163,26 @@ def sentence_freq(text, sents):
 ###########################################################################################
 
 # -- COMMAND mostfreq ---------------------------------------------------------------------
-def mostfreq(src, args):
-    docs = getdocs(src)
-    doc = docs[0]
-    words = nltk.word_tokenize(doc)
-    freqs = word_freq(words)
-    sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
+def getmostfreq(src, args, pretty):
 
-    return sortedfreqs 
+    if not pretty:
+        print("The most frequent word is ...")
 
+    docs = getdocs(src, pretty)
+    count = 0
+    words = []
+    freqs = []
+    sortedfreqs = []
+    for doc in docs:
+        words.append(nltk.word_tokenize(doc))
+        freqs.append(word_freq(words[count]))
+        sortedfreqs.append(sorted(freqs[count].items(), key=lambda x:x[1], reverse=True))
+        count += 1
+
+    if not pretty:
+        return sortedfreqs 
+    else:
+        return prettifymostfreq(sortedfreqs)
 
 
 
@@ -185,7 +198,7 @@ def augment_topics(model, text, sents, freqs):
     num = 10 # TODO: choose a number that has a relevance!!!
 
     if model == 0:
-        topics = lda2dict(lda([text], num))[1] # TODO: better idea?
+        topics = lda2dict(lda([text], num))[1]
     else:
         topics = lsi2dict(lsi([text], num))
 
@@ -227,16 +240,18 @@ the presence of topics, named entities, or both in the sentence.
     <args[0]> can be 0 (LDA), 1 (LSI), 2 (NEs), default behaviour is LDA.
     <args[1]> must be an integer representing the number of topics to extract, default number is 10.
 '''
-def getsummary(src, args):
+def getsummary(src, args, pretty):
     if len(args) < 2:
         print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
         sys.exit(0)
 
-    # print("Constructing summary for documents at " + src + " ...")
+    if not pretty:
+        text = "Constructing summary for documents at {} ..."
+        print(text.format(src))
 
     model = args[0]
     num = args[1]
-    docs = getdocs(src)
+    docs = getdocs(src, pretty)
 
     st = getSentenceTokenizer()
 
@@ -257,8 +272,10 @@ def getsummary(src, args):
 
     del st
 
-    return summaries
-
+    if not pretty:
+      return summaries
+    else:
+      return prettifysummary(summaries)
 
 
 
@@ -287,73 +304,55 @@ def ne(docs, model):
             nes    = ner.chunks2ne(doc, chunks)
         elif model == 1:
             nes    = ner.text2ne(doc)
+        entities += [nes]
 
     del st
     del ch
     del ner
 
-    # this does only the last doc!
-    return nes
+    return entities
 
-def getentities(src, args):
+
+def getentities(src, args, pretty):
     if len(args) < 2:
-        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        print("Incorrect arguments: expected \n linguist.py entities <src> <model> <type>") #TODO
         sys.exit(0)
 
     model = args[0]
     model_name = 'chunk-based' if 0 else 'text-based'
-#    print("Retrieving named entities by " + model_name + " detection for documents at " + src + " ...")
 
-    docs  = getdocs(src)
+    ntype = args[1]
+    if ntype < 0 or ntype > 3:
+        print("Incorrect arguments: <type> is 0 (PERSON), 1 (LOCATION), 2 (TIME), 3 (ORGANIZATION)")
+    nes_dict = { 0: 'PERSON', 1: 'LOCATION', 2: 'TIME', 3: 'ORGANIZATION' }
+    type_name = nes_dict[ntype].lower()
 
-    return ne(docs, model)
+    if not pretty:
+        out_text = "Retrieving {} named entities by {} detection for documents at ..."
+        print(text.format(type_name, model_name, src))
+
+    docs  = getdocs(src, pretty)
+    nes = ne(docs, model)
+    selected_nes = [list(filter(lambda n: n[1] == nes_dict[ntype], nesdoc)) for nesdoc in nes]
+
+    if not pretty:
+        return selected_nes
+    else:
+        return prettifyentities(selected_nes, type_name)
 
 
 
 
 # -- COMMAND topics ----------------------------------------------------------------------
 # TODO: use the trained class
-
 '''
-Extracts topics by either LDA or LSI model, depending on args.
-    <src> is a file or directory
-    <args[0]> can be 0 (LDA) or 1 (LSI), default behaviour is LDA.
-    <args[1]> must be an integer representing the number of topics to extract, default number is 10.
+Converts output of lsi or lda to a dictionary of words and their weight
 '''
-
-def gettopics(src, args):
-    if len(args) < 2:
-        print("Incorrect arguments: expected \n linguist.py topics <src> <model> <num>")
-        sys.exit(0)
-
-    model = args[0]
-    model_name = 'LDA' if 0 else 'LSI'
-#    print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
-
-
-    docs = getdocs(src)
-
-    if model == 1:
-#       print("LSI model topics:")
-        topics = lsi2dict(lsi(docs, args[1]))
-    else:
-#       print("LDA model topics:")
-        topics = lda2dict(lda(docs, args[1]))[0]
-
-    just_topics = sorted(set([t[0] for t in topics.items()]), reverse=True)
-
-    text = "The document you gave me to read is about " + just_topics[0] + " and also mentions " + just_topics[1] + " and " + just_topics[2] + " rather insistently."
-
-    return text
-
-
-
 def lsi2dict(topics):
     topics = topics[0][1].split('+')
     pairs  = [topic.split('*') for topic in topics]
     pairs  = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
     return dict(pairs)
-
 
 def lda2dict(topics):
     dicts = []
@@ -366,6 +365,9 @@ def lda2dict(topics):
     return dicts
 
 
+'''
+Get lsi and lda topics 
+'''
 def lsi(docs, num):
     # TODO: chunk mwes and collocations if necessary.
     # tokenize each doc, filter punctuation and stop words
@@ -394,6 +396,40 @@ def lda(docs, num):
 
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
     return lda_topics.print_topics(num)
+
+
+'''
+Extracts topics by either LDA or LSI model, depending on args.
+    <src> is a file or directory
+    <args[0]> can be 0 (LDA) or 1 (LSI), default behaviour is LDA.
+    <args[1]> must be an integer representing the number of topics to extract, default number is 10.
+'''
+
+def gettopics(src, args, pretty):
+    if len(args) < 2:
+        print("Incorrect arguments: expected \n linguist.py topics <src> <model> <num>")
+        sys.exit(0)
+
+    model = args[0]
+    model_name = 'LDA' if 0 else 'LSI'
+
+    if not pretty:
+        print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
+
+
+    docs = getdocs(src, pretty)
+    topics = []
+
+    for doc in docs:
+        if model == 1:
+            topics.append(lsi2dict(lsi(docs, args[1])))
+        else:
+            topics.append(lda2dict(lda(docs, args[1]))[0])
+
+    if not pretty:
+        return topics
+    else:
+        return prettifytopics(topics)
 
 
 
@@ -598,6 +634,7 @@ def addEntitiesToDatabase():
 
 
 # -- COMMAND questions ------------------------------------------------------------------
+# TODO CURRENTLY NOT IN USE
 '''
 Classifies questions based on the question classifier
     <text> is the question in string format
@@ -623,25 +660,20 @@ def getquestiontype(text, args):
 These functions format the output for the 'conversational' web interface
 '''
 
-# TODO: prints the overall most frequent word overall texts
-def prettifyMostFreq(sortedfreqs):
-    text =  "The most frequent word in this text is {} appearing {} times."
+def prettifymostfreq(sortedfreqs):
+    text =  'The most frequent word in this text is "{}" appearing {} times.'
 
-    return text.format(sortedfreqs[0][0], sortedfreqs[0][1])
+    return text.format(sortedfreqs[0][0][0], sortedfreqs[0][0][1])
 
 
 # TODO: prints the summary of only the first text
-def prettifySummary(summaries):
+def prettifysummary(summaries):
     return [ ' '.join(summary) for summary in summaries][0]
 
 
 # TODO: prints nes only for the fist text
-def prettifyEntitites(nes, ntype):
-    selected_nes = list(filter(lambda n: n[1] == nes_filter_dict[ntype], nes))
-    just_nes = [' '.join(ne[0]) for ne in selected_nes]
-
-    nes_filter_dict = { 0: 'PERSON', 1: 'LOCATION', 2: 'TIME', 3: 'ORGANIZATION' }
-    type_name = nes_filter_dict[ntype].lower()
+def prettifyentities(nes, type_name):
+    just_nes = [[ne[0] for ne in docne] for docne in nes][0]
 
     text0 = "I'm sorry, I don't think there is any " + type_name + " in your document." 
     text1 = "The " + type_name + " in your document is {}."
@@ -658,12 +690,14 @@ def prettifyEntitites(nes, ntype):
 
 
 # TODO: Gensim research. The output of topic modelling can be improved.  We need to use the wiki dictionary, and process the documents separately, selectively. Also, how do we extract a single topic from a vector of topics? Very naive implementation above in gettopics
-def prettifyTopics(topics):
+def prettifytopics(topics):
     just_topics = sorted(set([t[0] for t in topics.items()]), reverse=True)
-    text = "The document you gave me to read is about {} and also mentions {} and {} rather insistently."
+    text = 'The document you gave me to read is about "{}" and also mentions "{}" and "{}" rather insistently.'
 
     return text.format(just_topics[0], just_topics[1], just_topics[2])
 
+def prettifyrelationships(relationships):
+    return "TODO:"
 
 
 
@@ -673,30 +707,30 @@ def prettifyTopics(topics):
 Use script by calling $ python linguist.py <command> <source>
 
 '''
-
 commands = {
-    'mostfreq': mostfreq,
-    'summary': getsummary,
-    'entities': getentities,
-    'topics': gettopics,
+    'mostfreq'     : getmostfreq,
+    'summary'      : getsummary,
+    'entities'     : getentities,
+    'topics'       : gettopics,
     'relationships': getrelationships,
-    'question': getquestiontype,
-    # 'similar': todo
 }
 
 if len(sys.argv) <= 2:
-    print("the linguist expects the following command \n linguist.py <command> <src>")
+    print("the linguist expects the following command \n linguist.py <command> <prettyprint> <src>")
     sys.exit(0)
 if len(sys.argv) > 2:
-    com  = sys.argv[1]
-    src  = sys.argv[2]
-    args = 0
-    if len(sys.argv) > 3:
-        args = int(sys.argv[3]), int(sys.argv[4])
+    com  = sys.argv[1]           # command
+    pr   = sys.argv[2]           # pretty print if != 0
+    src  = sys.argv[3]           # file or folder to read from
+    args = [0]
+    if len(sys.argv) > 4:
+        args = int(sys.argv[4]), int(sys.argv[5])   # extra arguments required by some functions
 
-    # print("Executing linguist " + com + " on " + src + " ...")
+    if not pr:
+         print("Executing linguist " + com + " on " + src + " ...")
+ 
     if commands.get(com, False):
-        print(commands[com](src, args))
+        print(commands[com](src, args, pr))
     else:
-        print("<command> can be \n summary \n entities \n topics \n relationships \n question ")
+        print("<command> can be \n mostfreq \n summary \n entities \n topics \n relationships \n question ")
         sys.exit(0)
