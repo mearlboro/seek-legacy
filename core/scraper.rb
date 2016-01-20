@@ -66,9 +66,7 @@ def download_files_from_URLs(agent, target_dir, links, file_in_names, current_li
               case response
               when Net::HTTPRedirection
                 # Do Nothing for now
-                # TODO: Fix download of secure files
               when Net::HTTPOK
-                  # print "Fetching #{name}\n"
                   # Write chunks of file while also reading new chunks, to increase
                   # efficiency
                   File.open(name, 'w') do |file_out|
@@ -109,7 +107,6 @@ def extract_file_from_url(url, dest)
       case response
       when Net::HTTPRedirection
         # Do Nothing for now
-        # TODO: Fix download of secure files
       when Net::HTTPOK
           # Write chunks of file while also reading new chunks, to increase
           # efficiency

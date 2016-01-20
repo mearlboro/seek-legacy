@@ -71,22 +71,6 @@ def extract(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
             converted_file = os.path.splitext(filename)[0] + ".txt"
             os.system('python extractor.py %s %s' % (filename, dest))
             transfer_file(converted_file)
-    else:
-        print('''TODO: upload these files to the txt/ folder on the server and
-                 flag it that it needs to be analysed''')
-
-
-# -----------------------------------------------------------------------------
-# SEEK ANALYSE [--local] <SRC> <DEST>
-def analyse(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
-    print("TODO: topic modelling")
-
-
-# -----------------------------------------------------------------------------
-# SEEK LEARN [--local]
-def learn(args):  # args[0]: <src>, args[1]: <dest>, args[2]: isLocal
-    print("TODO: machine learning")
-
 
 # -----------------------------------------------------------------------------
 commands = {

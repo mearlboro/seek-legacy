@@ -13,7 +13,7 @@ module Scrapy
   # The sleep is there so that the Wikipedia so that the robots.txt file does
   # not ban the scrapper.
   def wiki_scrape(agent, url)
-    # TODO: Update path
+    # Update path according to machine
     Dir.chdir("../raw/text/")
 
     page = agent.get(url)
