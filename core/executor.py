@@ -35,7 +35,6 @@ def upload(args):   # args[0]: <src>
             output, errors = p.communicate()
             filename = output.decode().replace(" ", "_") + ".txt"
             transfer_file(filename)
-            # os.system('ruby scraper.rb -p %s' % src)
         except IOError:
             print("(seek) Cannot parse this address or URL.")
 
