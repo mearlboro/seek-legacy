@@ -20,8 +20,13 @@ and create all the required NLTK and Stanford data.
 3. Once you have downloaded all of the required data, you can comment any 
 installation or download commands in activate.sh, keeping only the exported paths.
 
-4. Almost there! Navigate to core and run python init.py. That will exported
+4. Navigate to `$NLTK_DATA/nltk_trainer` and run the following command: 
+`python train_chunker.py treebank_chunk --classifier=NaiveBayes
+5. Copy `seek5.ser.gz` to `$STANFORD_MODELS`
+6. Almost there! Navigate to core and run python init.py. That will exported
 all the necessary objects for your application.
+
+
 
 ### Basic capabilities
 ---------------
