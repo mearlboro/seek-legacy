@@ -184,7 +184,7 @@ def getmostfreq(src, args, pretty):
         count += 1
 
     if not pretty:
-        return sortedfreqs 
+        return sortedfreqs
     else:
         return prettifymostfreq(sortedfreqs)
 
@@ -395,7 +395,7 @@ def lda2dict(topics):
 
 
 '''
-Get lsi and lda topics 
+Get lsi and lda topics
 '''
 def lsi(docs, num):
     # tokenize each doc, filter punctuation and stop words
@@ -561,10 +561,10 @@ person(barack, prezindent of the united states, born in hawaii
 def getrelationships(option, opt_str, value, parser):
     args = parser.rargs
     src = args[0]
-    args = args[1:]
+    pretty = args[1]
     print("Extracting information from documents at " + src + " ...")
 
-    docs = getdocs(src)
+    docs = getdocs(src, pretty)
 
     st  = getSentenceTokenizer()
     ch  = getChunkParser()
@@ -633,7 +633,7 @@ def getquestiontype(option, opt_str, value, parser):
 
 
 ##########################################################################################
-''' 
+'''
 These functions format the output for the 'conversational' web interface
 '''
 
@@ -648,7 +648,7 @@ def prettifysummary(summaries):
 def prettifyentities(nes, type_name):
     just_nes = [[ne[0] for ne in docne] for docne in nes][0]
 
-    text0 = "I'm sorry, I don't think there is any " + type_name + " in your document." 
+    text0 = "I'm sorry, I don't think there is any " + type_name + " in your document."
     text1 = "The " + type_name + " in your document is {}."
     textn = "The documents contain information about {} and {}."
 

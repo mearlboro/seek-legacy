@@ -514,20 +514,12 @@ class NameEntityDetector():
             filtered_chunked_subtrees = chunked_sent.subtrees(filter= lambda t: t.label() == 'NP')
 
             for subtree in filtered_chunked_subtrees:
-<<<<<<< HEAD
                 ent_key = []
                 # Create Set like list to preserve order
                 for t in subtree.leaves():
                     if (t[0] not in ent_key):
                         ent_key.append(t[0])
                 if (all(word in ent_key for word in person_entities.keys())):
-                    answered.append((ent_key, "PERSON"))
-                if (any(word in ent_key and word != 'the' for word in date_entities.keys())):
-                    answered.append((ent_key, "DATE"))
-                if (any(word in ent_key for word in organization_entities.keys())):
-=======
-                ent_key = [t[0] for t in subtree.leaves() if t[0] in named_entities.keys()]
-                if all(word in ent_key for word in person_entities.keys()):
                     answered.append((ent_key, "PERSON"))
                 if any(word in ent_key and word != 'the' for word in date_entities.keys()):
                     for word in ent_key:
@@ -543,7 +535,6 @@ class NameEntityDetector():
                         if len(multiple_entities[key]) > 0:
                             answered.append((multiple_entities[key], key))
                 if any(word in ent_key for word in organization_entities.keys()):
->>>>>>> 28a7aaca6f0d0a0c05e4cb352cbe4beefb7905ec
                     answered.append((ent_key, "ORGANIZATION"))
                 if any(word in ent_key for word in location_entities.keys()):
                     answered.append((ent_key, "LOCATION"))
