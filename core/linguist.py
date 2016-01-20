@@ -22,6 +22,7 @@ import string
 from operator  import *
 from itertools import *
 from functools import *
+from optparse import OptionParser
 
 import numpy, nltk, gensim
 from nltk.corpus import stopwords
@@ -166,10 +167,10 @@ When summing frequencies per sentence add bias from topics in that phrase
     freqs: the output of sentence_frequency(text, sents)
 '''
 def augment_topics(model, text, sents, freqs):
-    num = 10 # TODO: choose a number that has a relevance!!!
+    num = 10
 
     if model == 0:
-        topics = lda2dict(lda([text], num))[1] # TODO: better idea?
+        topics = lda2dict(lda([text], num))[1]
     else:
         topics = lsi2dict(lsi([text], num))
 
@@ -187,7 +188,7 @@ When summing frequencies per sentence add bias from named entities in that phras
     freqs: the output of sentence_frequency(text, sents)
 '''
 def augment_ne(text, sents, freqs):
-    bias = 2 # TODO: meaningful number
+    bias = 2
 
     nes = ne([text], 1) # get single-word NEs by means of text analysis
     nes = [ne[0] for ne in nes] # the words as list
@@ -211,15 +212,15 @@ the presence of topics, named entities, or both in the sentence.
     <args[0]> can be 0 (LDA), 1 (LSI), 2 (NEs), default behaviour is LDA.
     <args[1]> must be an integer representing the number of topics to extract, default number is 10.
 '''
-def getsummary(src, args):
-    if len(args) < 2:
+def getsummary(option, opt_str, value, parser):
+    args = parser.rargs
+    if len(args) < 3:
         print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
         sys.exit(0)
-
+    src = args[0]
+    model = args[1]
+    num = int(args[2])
     print("Constructing summary for documents at " + src + " ...")
-
-    model = args[0]
-    num = args[1]
     docs = getdocs(src)
 
     st = getSentenceTokenizer()
@@ -233,18 +234,13 @@ def getsummary(src, args):
         elif model == 2:
             freqs = augment_ne(doc, sents, freqs)
         sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
-
         min_freq = sortedfreqs[num][1]
         summary = [f[0] for f in list(filter(lambda f: f[1] >= min_freq, freqs))]
 
         summaries += [summary]
 
     del st
-
-    return summaries
-
-
-
+    setattr(parser.values, option.dest, summaries)
 
 # -- COMMAND entities --------------------------------------------------------------------
 '''
@@ -268,7 +264,7 @@ def ne(docs, model):
         if model == 0:
             chunks = ch.sents2chunks(sents)
             nes    = ner.chunks2ne(doc, chunks)
-        elif model == 1:
+        else:
             nes    = ner.text2ne(doc)
 
     del st
@@ -277,23 +273,20 @@ def ne(docs, model):
 
     return nes
 
-def getentities(src, args):
+def getentities(option, opt_str, value, parser):
+    args = parser.rargs
     if len(args) < 2:
-        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        print("Incorrect arguments: expected \n linguist.py --entities <src> <model>")
         sys.exit(0)
-
-    model = args[0]
-    model_name = 'chunk-based' if 0 else 'text-based'
+    src = args[0]
+    model = args[1]
+    model_name = 'chunk-based' if model else 'text-based'
     print("Retrieving named entities by " + model_name + " detection for documents at " + src + " ...")
-
     docs  = getdocs(src)
-
-    return ne(docs, model)
-
+    setattr(parser.values, option.dest, ne(docs, model))
 
 
 # -- COMMAND topics ----------------------------------------------------------------------
-# TODO: use the trained class
 
 '''
 Extracts topics by either LDA or LSI model, depending on args.
@@ -302,24 +295,24 @@ Extracts topics by either LDA or LSI model, depending on args.
     <args[1]> must be an integer representing the number of topics to extract, default number is 10.
 '''
 
-def gettopics(src, args):
-    if len(args) < 2:
+def gettopics(option, opt_str, value, parser):
+    args = parser.rargs
+    if len(args) < 3:
         print("Incorrect arguments: expected \n linguist.py topics <src> <model> <num>")
         sys.exit(0)
-
-    model = args[0]
-    model_name = 'LDA' if 0 else 'LSI'
+    src = args[0]
+    model = args[1]
+    model_name = 'LDA' if not model else 'LSI'
     print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
 
     docs = getdocs(src)
 
     if model == 1:
         print("LSI model topics:")
-        return lsi(docs, args[1])
+        setattr(parser.values, option.dest, lsi(docs, args[2]))
     else:
         print("LDA model topics:")
-        return lda(docs, args[1])
-
+        setattr(parser.values, option.dest, lda(docs, args[2]))
 
 def lsi2dict(topics):
     topics = topics[0][1].split('+')
@@ -340,7 +333,6 @@ def lda2dict(topics):
 
 
 def lsi(docs, num):
-    # TODO: chunk mwes and collocations if necessary.
     # tokenize each doc, filter punctuation and stop words
     docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
     filtered = [f[1] for f in list(map(filter_stop_words, docs))]
@@ -356,7 +348,6 @@ def lsi(docs, num):
 
 
 def lda(docs, num):
-    # TODO: chunk mwes and collocations if necessary.
     # tokenize each doc, filter punctuation and stop words
     docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
     filtered = [f[1] for f in list(map(filter_stop_words, docs))]
@@ -367,9 +358,6 @@ def lda(docs, num):
 
     lda_topics = gensim.models.ldamodel.LdaModel(corpus=corp, id2word=dictionary, num_topics=num)
     return lda_topics.print_topics(num)
-
-
-
 
 # -- COMMAND relationships ---------------------------------------------------------------
 '''
@@ -406,7 +394,7 @@ def relations(sents, chunks, nes, ldas):
     ins  = [ 'of', 'that', 'which', 'like', 'in', 'at', 'as' ]
 
     nes_merged = dict([(' '.join(n[0]), n[1]) for n in nes])
-    pers_org = dict(filter(lambda t: t[1] == 'PERSON', nes_merged.items()))# or t[1] == 'ORGANIZATION', nes_merged.items()))
+    pers_org = dict(filter(lambda t: t[1] == 'PERSON', nes_merged.items()))
     # dictionary of dictionaries for each named entity
     retrieved = {}
     # Previously found named entity and the most likely candidate for the attributes
@@ -505,7 +493,10 @@ is(barack, prezinf)
 person(barack, prezindent of the united states, born in hawaii
 '''
 
-def getrelationships(src, args):
+def getrelationships(option, opt_str, value, parser):
+    args = parser.rargs
+    src = args[0]
+    args = args[1:]
     print("Extracting information from documents at " + src + " ...")
 
     docs = getdocs(src)
@@ -554,7 +545,7 @@ def getrelationships(src, args):
                         attributes = []
                         del ats[ent][0:index]
                         index = 1
-    return dbs
+    setattr(parser.values, option.dest, dbs)
 
 # -- COMMAND questions ------------------------------------------------------------------
 '''
@@ -562,8 +553,8 @@ Classifies questions based on the question classifier
     <text> is the question in string format
     takes no args
 '''
-def getquestiontype(text, args):
-
+def getquestiontype(option, opt_str, value, parser):
+    text = parser.rargs[0]
     qc  = getQuestionClassifier()
     ner = getNameEntityDetector()
 
@@ -572,32 +563,16 @@ def getquestiontype(text, args):
 
     del qc
     del ner
-
-    return c
+    setattr(parser.values, option.dest, c)
 
 ##########################################################################################
 
-commands = {
-    'summary': getsummary,
-    'entities': getentities,
-    'topics': gettopics,
-    'relationships': getrelationships,
-    'question': getquestiontype,
-}
+parser = OptionParser()
+parser.add_option("-e", "--entities", help="Extract named entities", action="callback", callback=getentities, dest="output")
+parser.add_option("-s", "--summary", help="Offer summary of text", action="callback", callback=getsummary, dest="output")
+parser.add_option("-t", "--topics", help="Extract topics from text", action="callback", callback=gettopics, dest="output")
+parser.add_option("-r", "--relationships", help="Extract relationships from text", action="callback", callback=getrelationships, dest="output")
+parser.add_option("-q", "--question", help="Classify questions", action="callback", callback=getquestiontype, dest="output")
 
-if len(sys.argv) <= 2:
-    print("the linguist expects the following command \n linguist.py <command> <src>")
-    sys.exit(0)
-if len(sys.argv) > 2:
-    com  = sys.argv[1]
-    src  = sys.argv[2]
-    args = 0
-    if len(sys.argv) > 3:
-        args = int(sys.argv[3]), int(sys.argv[4])
-
-    print("Executing linguist " + com + " on " + src + " ...")
-    if commands.get(com, False):
-        print(commands[com](src, args))
-    else:
-        print("<command> can be \n summary \n entities \n topics \n relationships \n question ")
-        sys.exit(0)
+(options, args) = parser.parse_args()
+print(options.output)

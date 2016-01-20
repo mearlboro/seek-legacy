@@ -337,7 +337,7 @@ class ChunkParser():
 
     def sent2chunks(self, sentence):
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
-        # TODO: train chunker on brown if that's the case
+        # train chunker on brown if that's the case
         # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
         tagged_sentence = nltk.pos_tag(tokenized_sentence)
         chunked_sentence = self.chunker.parse(tagged_sentence)
@@ -345,7 +345,7 @@ class ChunkParser():
 
     def sents2chunks(self, tokenized_sentences):
         # Chose nltk.pos_tag for simplicty. For more complex answers, try brown
-        # TODO: train chunker on brown if that's the case
+        # train chunker on brown if that's the case
         # tagged_sentences = list(map(self.tagger.tag, tokenized_sentences))
         tagged_sentences = list(map(nltk.pos_tag, tokenized_sentences))
         chunked_sentences = list(map(self.chunker.parse, tagged_sentences))
