@@ -1,4 +1,0 @@
-# <django_project_root>/runserver
-stunnel4 stunnel/dev_https &
-./manage.py runserver 0:8000 &
-HTTPS=1 ./manage.py runserver 0:8001

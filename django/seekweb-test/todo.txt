@@ -1,5 +1,0 @@
--- temp file to keep track of what is left to do --
- - functions.js: .main-input doesn't exist anymore, change if still necessary
- - seek.css: check if I missed any replacements in custom section in the morning
- - views.py: work with @mearlboro on integration in the morning
- - overall: change urls etc. to use new split html
