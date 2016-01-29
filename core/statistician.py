@@ -237,7 +237,7 @@ class SharoffMWETokenizer():
         print(str(datetime.now()) + ": Training decision tree classifier for the multi word expression tokenizer based on Sharoff's dictionary on the Brown corpus...")
 
         # get the Sharoff dictionary
-        f = open("../dictionaries/sharoff.json", 'r+')
+        f = open("../corpora/sharoff.json", 'r+')
         self.SharoffDict = json.load(f)
         f.close()
 
@@ -300,7 +300,7 @@ class McCarthyMWETokenizer(MWETokenizer):
 
     def __init__(self):
         # get the McCarthy dictionary
-        f = open("../dictionaries/mccarthy.json", 'r+')
+        f = open("../corpora/mccarthy.json", 'r+')
         self.McCarthyDict = json.load(f)
         f.close()
 
@@ -362,6 +362,10 @@ re-run init.py to refresh the pickle.
 '''
 class TopicModelling():
     def __init__(self):
+        wiki_src = '/disk100/wiki/xml/enwiki-articles.xml.bz2'
+        dict_src = '/disk100/wiki/wiki_dictionary.dict'
+        corp_src = '/disk100/wiki/wiki_corpus.mm'
+
         # -------------------------------------- Wikipedia training ------------------------------ #
         #                                                                                          #
         # print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")  #
@@ -377,9 +381,6 @@ class TopicModelling():
 
         # Working with persisted corpus and dictionary
 #       print(str(datetime.now()) + ": Training gensim dictionary for the Wikipedia corpus...")
-        wiki_src = '/disk100/wiki/xml/enwiki-articles.xml.bz2'
-        dict_src = '/disk100/wiki/wiki_dictionary.dict'
-        corp_src = '/disk100/wiki/wiki_corpus.mm'
 
         # load the corpus of documents in the wikipedia archive and save parsed files to disk
 #        self.wiki_corpus = WikiCorpus(wiki_src)
@@ -387,7 +388,7 @@ class TopicModelling():
 #        self.wiki_dictionary.save(dict_src)
 #        MmCorpus.serialize(corp_src, self.wiki_corpus)
 
-  # Working with persisted corpus and dictionary
+        # Working with persisted corpus and dictionary
         self.wiki_corpus = MmCorpus(corp_src)  # Revive a corpus using the Lazarus pit
         self.wiki_dictionary = Dictionary.load(dict_src)  # Load a dictionary
 
@@ -606,7 +607,7 @@ class QuestionClassifier():
         print(str(datetime.now()) + ": Training question classifier with decision tree on modified QC corpus...")
 
         # get the question corpus into a set of tuples
-        f = open("../corpora/qc_nes.json", 'r+')
+        f = open("../corpora/qc.json", 'r+')
         training_qs = json.load(f)
         f.close()
 

@@ -201,10 +201,13 @@ When summing frequencies per sentence add bias from topics in that phrase
 def augment_topics(model, text, sents, freqs):
     num = 10
 
-    if model == 0:
+    if model == "LDA":
         topics = lda2dict(lda([text], num))[1]
-    else:
+    elif model == "LSI":
         topics = lsi2dict(lsi([text], num))
+    else:
+        print("Unrecognized model: " + model)
+        sys.exit(0)
 
     sentfreqs = []
     for sent,freq in freqs:
@@ -247,12 +250,12 @@ the presence of topics, named entities, or both in the sentence.
 def getsummary(option, opt_str, value, parser):
     args = parser.rargs
     if len(args) < 4:
-        print("Incorrect arguments: expected \n linguist.py summary <src> <model> <num>")
+        print("Incorrect arguments:\nUsage: linguist.py --summary src model no_sentences pretty")
         sys.exit(0)
     src = args[0]
     model = args[1]
     num = int(args[2])
-    pretty = args[3]
+    pretty = int(args[3])
 
     text = "Constructing summary for documents at {} ..."
     print(text.format(src))
@@ -265,9 +268,9 @@ def getsummary(option, opt_str, value, parser):
     for doc in docs:
         sents = st.text2sents(doc)
         freqs = sentence_freq(doc, sents)
-        if model == 0 or model == 1:
+        if model in ["LDA", "LSI"]:
             freqs = augment_topics(model, doc, sents, freqs)
-        elif model == 2:
+        elif model == "NE":
             freqs = augment_ne(doc, sents, freqs)
         sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
         min_freq = sortedfreqs[num][1]
@@ -298,10 +301,11 @@ def ne(docs, model):
     st  = getSentenceTokenizer()
     ch  = getChunkParser()
     ner = getNameEntityDetector()
+    entities = []
 
     for doc in docs:
         sents  = st.text2sents(doc)
-        if model == 0:
+        if model == 'chunk':
             chunks = ch.sents2chunks(sents)
             nes    = ner.chunks2ne(doc, chunks)
         else:
@@ -317,26 +321,25 @@ def ne(docs, model):
 def getentities(option, opt_str, value, parser):
     args = parser.rargs
     if len(args) < 4:
-        print("Incorrect arguments: expected \n linguist.py --entities <src> <model>")
+        print("Incorrect arguments:\nUsage: linguist.py --entities src model ne_type pretty")
         sys.exit(0)
     src = args[0]
     model = args[1]
-    model_name = 'chunk-based' if model else 'text-based'
-
     ntype = args[2]
-    pretty = args[3]
-    if ntype < 0 or ntype > 3:
-        print("Incorrect arguments: <type> is 0 (PERSON), 1 (LOCATION), 2 (TIME), 3 (ORGANIZATION)")
-    nes_dict = { 0: 'PERSON', 1: 'LOCATION', 2: 'TIME', 3: 'ORGANIZATION' }
-    type_name = nes_dict[ntype].lower()
-
+    pretty = int(args[3])
+    if ntype not in ["PERSON", "LOCATION", "DATE", "ORGANIZATION", "ALL"]:
+        print("Incorrect arguments: ne_type can be PERSON, LOCATION, DATE, ORGANIZATION or ALL")
+    type_name = ntype.lower()
     if not pretty:
         out_text = "Retrieving {} named entities by {} detection for documents at ..."
-        print(text.format(type_name, model_name, src))
+        print(out_text.format(type_name, model, src))
 
     docs  = getdocs(src, pretty)
     nes = ne(docs, model)
-    selected_nes = [list(filter(lambda n: n[1] == nes_dict[ntype], nesdoc)) for nesdoc in nes]
+    if ntype == "ALL":
+        selected_nes = nes
+    else:
+        selected_nes = [list(filter(lambda n: n[1] == ntype, nesdoc)) for nesdoc in nes]
 
     if not pretty:
         setattr(parser.values, option.dest, selected_nes)
@@ -353,24 +356,27 @@ Converts output of lsi or lda to a dictionary of words and their weight
 def gettopics(option, opt_str, value, parser):
     args = parser.rargs
     if len(args) < 3:
-        print("Incorrect arguments: expected \n linguist.py topics <src> <model> <pretty> <num>")
+        print("Incorrect arguments:\nUsage: linguist.py --topics src model no_topics pretty")
         sys.exit(0)
     src = args[0]
     model = args[1]
-    model_name = 'LDA' if not model else 'LSI'
-    pretty = args[2]
-    num = args[3]
+    # model_name = 'LDA' if not model else 'LSI'
+    num = int(args[2])
+    pretty = int(args[3])
     if not pretty:
-        print("Retrieving topics by the " + model_name + " model for documents at " + src + " ...")
+        print("Retrieving topics by the " + model + " model for documents at " + src + " ...")
 
     docs = getdocs(src, pretty)
     topics = []
 
     for doc in docs:
-        if model == 1:
-            topics.append(lsi2dict(lsi(docs, args[3])))
+        if model == "LSI":
+            topics.append(lsi2dict(lsi(docs, num)))
+        elif model == "LDA":
+            topics.append(lda2dict(lda(docs, num))[0])
         else:
-            topics.append(lda2dict(lda(docs, args[3]))[0])
+            print("Unrecognized model: " + model)
+            sys.exit(0)
 
     if not pretty:
         setattr(parser.values, option.dest, topics)
@@ -560,8 +566,11 @@ person(barack, prezindent of the united states, born in hawaii
 
 def getrelationships(option, opt_str, value, parser):
     args = parser.rargs
+    if len(args) < 2:
+        print("Incorrect arguments:\nUsage: linguist.py --relationships src pretty")
+        sys.exit(0)
     src = args[0]
-    pretty = args[1]
+    pretty = int(args[1])
     print("Extracting information from documents at " + src + " ...")
 
     docs = getdocs(src, pretty)
@@ -673,11 +682,11 @@ def prettifyrelationships(relationships):
 
 ##########################################################################################
 parser = OptionParser()
-parser.add_option("-e", "--entities", help="Extract named entities", action="callback", callback=getentities, dest="output")
-parser.add_option("-s", "--summary", help="Offer summary of text", action="callback", callback=getsummary, dest="output")
-parser.add_option("-t", "--topics", help="Extract topics from text", action="callback", callback=gettopics, dest="output")
-parser.add_option("-r", "--relationships", help="Extract relationships from text", action="callback", callback=getrelationships, dest="output")
-parser.add_option("-q", "--question", help="Classify questions", action="callback", callback=getquestiontype, dest="output")
+parser.add_option("-e", "--entities", help="Extract named entities. Required src topic_model entity_type pretty", action="callback", callback=getentities, dest="output")
+parser.add_option("-s", "--summary", help="Offer summary of text. Required src, topic_model, no_sentences, pretty", action="callback", callback=getsummary, dest="output")
+parser.add_option("-t", "--topics", help="Extract topics from text. Required src, topic_model, no_topics, pretty", action="callback", callback=gettopics, dest="output")
+parser.add_option("-r", "--relationships", help="Extract relationships from text. Required src pretty", action="callback", callback=getrelationships, dest="output")
+parser.add_option("-q", "--question", help="Classify questions. Required question in string format", action="callback", callback=getquestiontype, dest="output")
 
 (options, args) = parser.parse_args()
 print(options.output)

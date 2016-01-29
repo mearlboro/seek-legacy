@@ -1,5 +1,6 @@
 # work directories containing files -- no need to store on git
 /txt/*
+/text/
 /raw/*
 /text-normalization
 /nltk-trainer
@@ -9,11 +10,14 @@
 
 # cache
 /core/__pycache__/*
+/core/skills
+/core/wiki
+/core/*.txt
 /django/seek/__pycache__/*
 
 # seek environment should be recreated at every pull
 /seek-env/
-/seek-env/core/skills
+
 # temp files
 .*.swp
 .*.swo
