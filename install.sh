@@ -34,7 +34,7 @@ if [[ $platform == 'linux' ]]; then
 #  virtualenv -p /usr/bin/python3 seek-env
   # -- dont forget to always activate / deactivate ------------------------------
  # /bin/bash -c ". seek-env/bin/activate; exec /bin/bash -i"
-source seek-env/bin/activate  
+source seek-env/bin/activate
 cd seek-env
 
   # -- textract dependencies ----------------------------------------------------
@@ -100,6 +100,9 @@ python setup.py install
 #python train_tagger.py brown
 
 cd $cwd
+# -- Spacy ----------------------------------------------------------------------
+pip3 install -U spacy
+python3 -m spacy.en.download
 
 # -- Gensim ---------------------------------------------------------------------
 pip3 install -U numpy

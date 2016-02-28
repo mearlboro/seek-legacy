@@ -37,6 +37,14 @@ from nltk.chunk.regexp import *
 from nltk import nonterminals, Production, CFG
 
 # ------------------------------------------------------------------------------------
+# spacy.io
+# ------------------------------------------------------------------------------------
+print("Loading dependencies, please wait")
+from spacy.en import English
+from spacy import attrs
+nlp = English()
+print("Dependencies have been loaded")
+# ------------------------------------------------------------------------------------
 ''' Import the trained classes from /skills '''
 def getSentenceTokenizer():
     with open('skills/init_sent_tok.pkl','rb') as infile:
@@ -93,8 +101,12 @@ def vocab(toks):
 # Get the word frequencies of a set of tokens.
 # The results of this function can be simply added for multiple texts.
 def word_freq(toks):
-    freqs  = nltk.FreqDist([w.lower() for w in toks])
-    return freqs
+    # freqs  = nltk.FreqDist([w.lower() for w in toks])
+    word_freqs = {}
+    freqs = toks.count_by(attrs.ORTH)
+    for freq in freqs.items():
+        word_freqs[nlp.vocab.strings[freq[0]]] = freq[1]
+    return word_freqs
 
 
 # Filter punctuation.
@@ -125,30 +137,22 @@ def filter_stop_words(toks):
         'VBP' ,  # verb present
         'VBZ' ,  # verb present 3rd person singular
     ])
-    # import the NLTK stopword corpus
-    # words can be seen here http://snowball.tartarus.org/algorithms/english/stop.txt
-    stopwords_corpus = stopwords.words('english')
-
-    # use the tagger to identify part of speech
-    parts_of_speech = nltk.pos_tag(toks)
     # filter out the parts of speech of irrelevant words
-    parts_of_speech_filter = filter(lambda  pair : pair[1] in filter_pos, parts_of_speech)
-    # filter out the nltk stopwords corpus
-    corpus_filter = filter(lambda pair : pair[0] not in stopwords_corpus, parts_of_speech_filter)
-
+    parts_of_speech_filter = filter(lambda  tok : pair.tag_ in filter_pos, toks)
+    # filter out stopwords
+    corpus_filter = filter(lambda tok : not tok.is_stop, parts_of_speech_filter)
     # get the list of remaining tokens in original case and all lowercase
-    filtered_text  = [pair[0] for pair in corpus_filter]
-    filtered_lower = [word.lower() for word in filtered_text]
+    filtered_lower = [word.lower() for word in corpus_filter]
 
-    return (filtered_text, filtered_lower)
+    return (corpus_filter, filtered_lower)
 
 
 
 # Get the weight of each sentence in a text based on frequency.
 def sentence_freq(text, sents):
     # get and filter words
-    words = nltk.word_tokenize(text)
-    words = filter_punct(words)
+    # words = nltk.word_tokenize(text)
+    # words = filter_punct(words)
     (filtered_words, filtered_lower) = filter_stop_words(words)
 
     # get vocab and freqs
@@ -167,8 +171,10 @@ def sentence_freq(text, sents):
 ###########################################################################################
 
 # -- COMMAND mostfreq ---------------------------------------------------------------------
-def getmostfreq(src, args, pretty):
-
+def getmostfreq(option, opt_str, value, parser):
+    args = parser.rargs
+    src = args[0]
+    pretty = args[1]
     if not pretty:
         print("The most frequent word is ...")
 
@@ -178,15 +184,19 @@ def getmostfreq(src, args, pretty):
     freqs = []
     sortedfreqs = []
     for doc in docs:
-        words.append(nltk.word_tokenize(doc))
+        # words.append(nltk.word_tokenize(doc))
+        words.append(nlp(doc))
+
         freqs.append(word_freq(words[count]))
         sortedfreqs.append(sorted(freqs[count].items(), key=lambda x:x[1], reverse=True))
         count += 1
 
     if not pretty:
-        return sortedfreqs
+        setattr(parser.values, option.dest, sortedfreqs)
+        # return sortedfreqs
     else:
-        return prettifymostfreq(sortedfreqs)
+        setattr(parser.values, option.dest, prettifymostfreq(sortedfreqs))
+        # return prettifymostfreq(sortedfreqs)
 
 
 
@@ -297,19 +307,14 @@ sentence frequency measurements.
     <args[1]> can be 0 (NEs)
 '''
 
-def ne(docs, model):
+def ne(docs):
     st  = getSentenceTokenizer()
     ch  = getChunkParser()
     ner = getNameEntityDetector()
     entities = []
 
     for doc in docs:
-        sents  = st.text2sents(doc)
-        if model == 'chunk':
-            chunks = ch.sents2chunks(sents)
-            nes    = ner.chunks2ne(doc, chunks)
-        else:
-            nes    = ner.text2ne(doc)
+        nes = [(ent, ent.label_) for ent in nlp(doc).ents]
         entities += [nes]
 
     del st
@@ -320,22 +325,21 @@ def ne(docs, model):
 
 def getentities(option, opt_str, value, parser):
     args = parser.rargs
-    if len(args) < 4:
-        print("Incorrect arguments:\nUsage: linguist.py --entities src model ne_type pretty")
+    if len(args) < 3:
+        print("Incorrect arguments:\nUsage: linguist.py --entities src ne_type pretty")
         sys.exit(0)
     src = args[0]
-    model = args[1]
-    ntype = args[2]
-    pretty = int(args[3])
-    if ntype not in ["PERSON", "LOCATION", "DATE", "ORGANIZATION", "ALL"]:
-        print("Incorrect arguments: ne_type can be PERSON, LOCATION, DATE, ORGANIZATION or ALL")
+    ntype = args[1]
+    pretty = int(args[2])
+    if ntype not in ["PERSON", "GPE", "DATE", "ORG", "ALL"]:
+        print("Incorrect arguments: ne_type can be PERSON, GPE, DATE, ORG or ALL")
     type_name = ntype.lower()
     if not pretty:
-        out_text = "Retrieving {} named entities by {} detection for documents at ..."
-        print(out_text.format(type_name, model, src))
+        out_text = "Retrieving {} named entities for documents at ..."
+        print(out_text.format(type_name, src))
 
     docs  = getdocs(src, pretty)
-    nes = ne(docs, model)
+    nes = ne(docs)
     if ntype == "ALL":
         selected_nes = nes
     else:
@@ -360,7 +364,7 @@ def gettopics(option, opt_str, value, parser):
         sys.exit(0)
     src = args[0]
     model = args[1]
-    # model_name = 'LDA' if not model else 'LSI'
+
     num = int(args[2])
     pretty = int(args[3])
     if not pretty:
@@ -687,6 +691,7 @@ parser.add_option("-s", "--summary", help="Offer summary of text. Required src, 
 parser.add_option("-t", "--topics", help="Extract topics from text. Required src, topic_model, no_topics, pretty", action="callback", callback=gettopics, dest="output")
 parser.add_option("-r", "--relationships", help="Extract relationships from text. Required src pretty", action="callback", callback=getrelationships, dest="output")
 parser.add_option("-q", "--question", help="Classify questions. Required question in string format", action="callback", callback=getquestiontype, dest="output")
+parser.add_option("-m", "--freq", help="Return most frequent word. Required src pretty", action="callback", callback=getmostfreq, dest="output")
 
 (options, args) = parser.parse_args()
 print(options.output)
