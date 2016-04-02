@@ -24,17 +24,18 @@ from itertools import *
 from functools import *
 from optparse import OptionParser
 
-import numpy, nltk, gensim
-from nltk.corpus import stopwords
+# import numpy, nltk, gensim
+import gensim
+# from nltk.corpus import stopwords
 from gensim import corpora, models, similarities
 
 import logging
 logger = logging.getLogger('handler')
 
-from nltk.chunk.util import *
-from nltk.chunk import *
-from nltk.chunk.regexp import *
-from nltk import nonterminals, Production, CFG
+# from nltk.chunk.util import *
+# from nltk.chunk import *
+# from nltk.chunk.regexp import *
+# from nltk import nonterminals, Production, CFG
 
 # ------------------------------------------------------------------------------------
 # spacy.io
@@ -42,34 +43,36 @@ from nltk import nonterminals, Production, CFG
 print("Loading dependencies, please wait")
 from spacy.en import English
 from spacy import attrs
+import plac
 nlp = English()
 print("Dependencies have been loaded")
+
 # ------------------------------------------------------------------------------------
-''' Import the trained classes from /skills '''
-def getSentenceTokenizer():
-    with open('skills/init_sent_tok.pkl','rb') as infile:
-        st = pickle.load(infile)
-    return st
-
-def getChunkParser():
-    with open('skills/init_chunk.pkl','rb') as infile:
-        cp = pickle.load(infile)
-    return cp
-
-def getNameEntityDetector():
-    with open('skills/init_ner.pkl','rb') as infile:
-        ner = pickle.load(infile)
-    return ner
-
-def getTopicModelling():
-    with open('skills/init_tm.pkl','rb') as infile:
-        tm = pickle.load(infile)
-    return tm
-
-def getQuestionClassifier():
-    with open('skills/init_qc.pkl','rb') as infile:
-        qc = pickle.load(infile)
-    return qc
+# ''' Import the trained classes from /skills '''
+# def getSentenceTokenizer():
+#     with open('skills/init_sent_tok.pkl','rb') as infile:
+#         st = pickle.load(infile)
+#     return st
+#
+# def getChunkParser():
+#     with open('skills/init_chunk.pkl','rb') as infile:
+#         cp = pickle.load(infile)
+#     return cp
+#
+# def getNameEntityDetector():
+#     with open('skills/init_ner.pkl','rb') as infile:
+#         ner = pickle.load(infile)
+#     return ner
+#
+# def getTopicModelling():
+#     with open('skills/init_tm.pkl','rb') as infile:
+#         tm = pickle.load(infile)
+#     return tm
+#
+# def getQuestionClassifier():
+#     with open('skills/init_qc.pkl','rb') as infile:
+#         qc = pickle.load(infile)
+#     return qc
 
 
 ''' Get text from document or directory. '''
@@ -272,11 +275,11 @@ def getsummary(option, opt_str, value, parser):
 
     docs = getdocs(src, pretty)
 
-    st = getSentenceTokenizer()
+    # st = getSentenceTokenizer()
 
     summaries = []
     for doc in docs:
-        sents = st.text2sents(doc)
+        sents = doc.sents
         freqs = sentence_freq(doc, sents)
         if model in ["LDA", "LSI"]:
             freqs = augment_topics(model, doc, sents, freqs)
@@ -288,7 +291,7 @@ def getsummary(option, opt_str, value, parser):
 
         summaries += [summary]
 
-    del st
+    # del st
 
     if not pretty:
       setattr(parser.values, option.dest, summaries)
@@ -308,18 +311,19 @@ sentence frequency measurements.
 '''
 
 def ne(docs):
-    st  = getSentenceTokenizer()
-    ch  = getChunkParser()
-    ner = getNameEntityDetector()
-    entities = []
+    # st  = getSentenceTokenizer()
+    # ch  = getChunkParser()
+    # ner = getNameEntityDetector()
+    entities = {}
 
     for doc in docs:
-        nes = [(ent, ent.label_) for ent in nlp(doc).ents]
-        entities += [nes]
+        # nes = [(ent, ent.label_) ]
+        for ent in nlp(doc).ents:
+            entities[str(ent)] = ent.label_
 
-    del st
-    del ch
-    del ner
+    # del st
+    # del ch
+    # del ner
 
     return entities
 
@@ -568,6 +572,24 @@ is(barack, prezinf)
 person(barack, prezindent of the united states, born in hawaii
 '''
 
+def _span_to_tuple(span):
+    start = span[0].idx
+    end = span[-1].idx + len(span[-1])
+    tag = span.root.tag_
+    text = span.text
+    label = span.label_
+    return (start, end, tag, text, label)
+
+def merge_spans(spans, doc):
+    # This is a bit awkward atm. What we're doing here is merging the entities,
+    # so that each only takes up a single token. But an entity is a Span, and
+    # each Span is a view into the doc. When we merge a span, we invalidate
+    # the other spans. This will get fixed --- but for now the solution
+    # is to gather the information first, before merging.
+    tuples = [_span_to_tuple(span) for span in spans]
+    for span_tuple in tuples:
+        doc.merge(*span_tuple)
+
 def getrelationships(option, opt_str, value, parser):
     args = parser.rargs
     if len(args) < 2:
@@ -578,51 +600,27 @@ def getrelationships(option, opt_str, value, parser):
     print("Extracting information from documents at " + src + " ...")
 
     docs = getdocs(src, pretty)
-
-    st  = getSentenceTokenizer()
-    ch  = getChunkParser()
-    ner = getNameEntityDetector()
-
+    ents = ne(docs)
     dbs = []
-
-    for doc in docs:
-        db = {}
-        # Construct a dictionary of the form: Value of NE, relation, [(attribute, NE tag)]
-        sents  = st.text2sents(doc)
-        sents  = [list(filter(lambda x: x not in string.punctuation, sent)) for sent in sents]
-        ldas   = [l for l in lda2dict(lda([doc], 2))[0]]
-        regular_nes = list(ner.text2ne(doc))
-        date_nes = dict(filter(lambda t: t[1] == "DATE", regular_nes))
-        nes    = [ne[0] for ne in regular_nes]
-        sents  = list(filter(lambda sent: any([t in sent for t in ldas]) or any([ne in sent for ne in nes]), sents))
-        chunks = ch.sents2chunks(sents)
-        nes    = ner.chunks2ne(doc, chunks)
-        ats, rels = relations(sents, chunks, nes, ldas)
-        nes = dict([(' '.join(n[0]), n[1]) for n in nes])
-        for ent in ats.keys():
-            prev_rel = None
-            index = 1
-            if ent in rels.keys():
-                for relation in rels[ent]:
-                    attributes = []
-                    index += 1
-                    if relation != "":
-                        prev_rel = relation
-                        for atrb in ats[ent][0:index]:
-                            if atrb in nes.keys():
-                                attributes.append((atrb, nes[atrb]))
-                            elif ent in nes.keys():
-                                attributes.append((atrb, nes[ent]))
-                        if ent in nes.keys():
-                            dbs += [((ent, nes[ent]), prev_rel, attributes)]
-                        else:
-                            words = ent.split()
-                            for word in words:
-                                if word in nes.keys():
-                                    dbs += [((ent, nes[word]), prev_rel, attributes)]
-                        attributes = []
-                        del ats[ent][0:index]
-                        index = 1
+    for d in docs:
+        doc = nlp(d)
+        merge_spans(doc.ents, doc)
+        merge_spans(doc.noun_chunks, doc)
+        # relations = {}
+        relations = []
+        for tok in doc:
+            if tok.dep_ in ('attr', 'dobj'):
+                subject = [w for w in tok.head.lefts if w.dep_ == 'nsubj']
+                if subject:
+                    subject = subject[0]
+                    # if str(subject) in relations.keys():
+                    #     relations[subject].append([tok])
+                    # else:
+                    #     relations[subject] = [[tok]]
+                    relations.append((subject, tok))
+            elif tok.dep_ == 'pobj' and tok.head.dep_ == 'prep':
+                relations.append((tok.head.head, tok))
+        dbs += relations
     setattr(parser.values, option.dest, dbs)
 
 # -- COMMAND questions ------------------------------------------------------------------
@@ -632,6 +630,7 @@ Classifies questions based on the question classifier
     takes no args
 '''
 def getquestiontype(option, opt_str, value, parser):
+    # TODO update to use spacy
     text = parser.rargs[0]
     qc  = getQuestionClassifier()
     ner = getNameEntityDetector()
