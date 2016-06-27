@@ -24,18 +24,12 @@ from itertools import *
 from functools import *
 from optparse import OptionParser
 
-# import numpy, nltk, gensim
-import gensim
+import numpy, nltk, gensim
 # from nltk.corpus import stopwords
 from gensim import corpora, models, similarities
 
 import logging
 logger = logging.getLogger('handler')
-
-# from nltk.chunk.util import *
-# from nltk.chunk import *
-# from nltk.chunk.regexp import *
-# from nltk import nonterminals, Production, CFG
 
 # ------------------------------------------------------------------------------------
 # spacy.io
@@ -43,37 +37,10 @@ logger = logging.getLogger('handler')
 print("Loading dependencies, please wait")
 from spacy.en import English
 from spacy import attrs
-import plac
+from spacy.tokens import Doc
 nlp = English()
 print("Dependencies have been loaded")
-
 # ------------------------------------------------------------------------------------
-# ''' Import the trained classes from /skills '''
-# def getSentenceTokenizer():
-#     with open('skills/init_sent_tok.pkl','rb') as infile:
-#         st = pickle.load(infile)
-#     return st
-#
-# def getChunkParser():
-#     with open('skills/init_chunk.pkl','rb') as infile:
-#         cp = pickle.load(infile)
-#     return cp
-#
-# def getNameEntityDetector():
-#     with open('skills/init_ner.pkl','rb') as infile:
-#         ner = pickle.load(infile)
-#     return ner
-#
-# def getTopicModelling():
-#     with open('skills/init_tm.pkl','rb') as infile:
-#         tm = pickle.load(infile)
-#     return tm
-#
-# def getQuestionClassifier():
-#     with open('skills/init_qc.pkl','rb') as infile:
-#         qc = pickle.load(infile)
-#     return qc
-
 
 ''' Get text from document or directory. '''
 def getdocs(src, pretty):
@@ -97,76 +64,51 @@ def getdocs(src, pretty):
 # Get the vocabulary of a document split in tokens.
 def vocab(toks):
     voc = []
-    voc = sorted(set(voc + sorted(set([w.lower() for w in toks]))))
+    voc = sorted(set([tok.text for tok in toks]))
+    # voc = sorted(set(voc + sorted(set([w.lower() for w in toks]))))
+    # print(voc)
     return voc
-
 
 # Get the word frequencies of a set of tokens.
 # The results of this function can be simply added for multiple texts.
 def word_freq(toks):
-    # freqs  = nltk.FreqDist([w.lower() for w in toks])
     word_freqs = {}
-    freqs = toks.count_by(attrs.ORTH)
+    toks = filter_punct(toks)
+    toks = nlp(' '.join(toks))
+
+    filtered_toks = nlp(' '.join(filter_stop_words(toks)))
+
+    freqs = filtered_toks.count_by(attrs.ORTH)
     for freq in freqs.items():
         word_freqs[nlp.vocab.strings[freq[0]]] = freq[1]
     return word_freqs
 
-
 # Filter punctuation.
 def filter_punct(toks):
-    words = list(filter(lambda w: w not in string.punctuation, toks))
+    words = [tok.text for tok in toks if not tok.is_punct]
     return words
-
 
 # Filter out stop words and irrelevant parts of speech from a set of tokens.
 def filter_stop_words(toks):
-    # List of parts of speech which are not stop words
-    # nltk.help.upenn_tagset() to see all
-    filter_pos = set([
-        'CD'  ,  # numeral: cardinal
-        'JJ'  ,  # ordinal adjective or numeral
-        'JJR' ,  # comparative adjective
-        'JJS' ,  # superlative adjective
-        'NN'  ,  # singular or mass common noun
-        'NNS' ,  # plural common noun
-        'NNP' ,  # singular proper noun
-        'NNPS',  # plural proper noun
-        'RBR' ,  # comparative adverb
-        'RBS' ,  # superlative adverb
-        'VB'  ,  # verb
-        'VBD' ,  # verb past tense
-        'VBG' ,  # verb present participle or gerund
-        'VBN' ,  # verb past participle
-        'VBP' ,  # verb present
-        'VBZ' ,  # verb present 3rd person singular
-    ])
-    # filter out the parts of speech of irrelevant words
-    parts_of_speech_filter = filter(lambda  tok : pair.tag_ in filter_pos, toks)
-    # filter out stopwords
-    corpus_filter = filter(lambda tok : not tok.is_stop, parts_of_speech_filter)
-    # get the list of remaining tokens in original case and all lowercase
-    filtered_lower = [word.lower() for word in corpus_filter]
-
-    return (corpus_filter, filtered_lower)
-
-
+    corpus_filter = [tok.text for tok in toks if not tok.is_stop]
+    return corpus_filter
 
 # Get the weight of each sentence in a text based on frequency.
 def sentence_freq(text, sents):
     # get and filter words
     # words = nltk.word_tokenize(text)
-    # words = filter_punct(words)
-    (filtered_words, filtered_lower) = filter_stop_words(words)
+    tokens = nlp(text)
+    tokens = nlp(' '.join(filter_punct(tokens)))
+    filtered_words = nlp(' '.join(filter_stop_words(tokens)))
 
     # get vocab and freqs
-    voc = vocab(filtered_lower)
-    freqs = word_freq(filtered_lower)
+    voc = vocab(filtered_words)
+    freqs = word_freq(filtered_words)
 
     # when summing frequencies per sentence thus use wordfreqs
     sentfreqs = []
     for sent in sents:
-        sentfreqs += [(sent, numpy.mean(list(map(lambda word: word.lower() in voc and freqs.get(word) or 0, sent))))]
-
+        sentfreqs += [(sent.text, numpy.mean([freqs[word.text] if word.text in voc else 0 for word in sent]))]
     return sentfreqs
 
 
@@ -187,19 +129,15 @@ def getmostfreq(option, opt_str, value, parser):
     freqs = []
     sortedfreqs = []
     for doc in docs:
-        # words.append(nltk.word_tokenize(doc))
-        words.append(nlp(doc))
-
+        tokens = nlp(doc)
+        words.append(tokens)
         freqs.append(word_freq(words[count]))
         sortedfreqs.append(sorted(freqs[count].items(), key=lambda x:x[1], reverse=True))
         count += 1
-
     if not pretty:
         setattr(parser.values, option.dest, sortedfreqs)
-        # return sortedfreqs
     else:
         setattr(parser.values, option.dest, prettifymostfreq(sortedfreqs))
-        # return prettifymostfreq(sortedfreqs)
 
 
 
@@ -223,9 +161,9 @@ def augment_topics(model, text, sents, freqs):
         sys.exit(0)
 
     sentfreqs = []
-    for sent,freq in freqs:
-        sentfreqs +=  [(reduce(lambda x,y: x + ' ' + y, sent),
-                        freq + sum(list(map(lambda word: word.lower() in topics.keys() and topics[word.lower()] or 0, sent)))
+    for sent, freq in freqs:
+        sentfreqs +=  [(''.join(sent),
+                        freq + sum([word if word.lower() in topics.keys() and topics[word.lower()] else 0 for word in sent])
                       )]
     return sentfreqs
 
@@ -238,13 +176,13 @@ When summing frequencies per sentence add bias from named entities in that phras
 def augment_ne(text, sents, freqs):
     bias = 2
 
-    nes = ne([text], 1) # get single-word NEs by means of text analysis
+    nes = ne([text]) # get single-word NEs by means of text analysis
     nes = [ne[0] for ne in nes] # the words as list
 
     sentfreqs = []
     for sent,freq in freqs:
-        sentfreqs +=  [(reduce(lambda x,y: x + ' ' + y, sent),
-                        freq * sum(list(map(lambda word: word.lower() in nes and bias or 1, sent)))
+        sentfreqs +=  [(''.join(sent),
+                        freq * sum([word if word.lower() in nes and bias else 1 for word in sent])
                       )]
     return sentfreqs
 
@@ -275,23 +213,19 @@ def getsummary(option, opt_str, value, parser):
 
     docs = getdocs(src, pretty)
 
-    # st = getSentenceTokenizer()
-
     summaries = []
     for doc in docs:
-        sents = doc.sents
+        sents = nlp(doc).sents
         freqs = sentence_freq(doc, sents)
         if model in ["LDA", "LSI"]:
             freqs = augment_topics(model, doc, sents, freqs)
         elif model == "NE":
             freqs = augment_ne(doc, sents, freqs)
-        sortedfreqs = sorted(freqs, key=lambda x:x[1], reverse=True)
+        sortedfreqs = sorted(freqs, key=lambda x: x[1], reverse=True)
         min_freq = sortedfreqs[num][1]
-        summary = [f[0] for f in list(filter(lambda f: f[1] >= min_freq, freqs))]
+        summary = [f[0] for f in freqs if f[1] >= min_freq]
 
         summaries += [summary]
-
-    # del st
 
     if not pretty:
       setattr(parser.values, option.dest, summaries)
@@ -311,19 +245,12 @@ sentence frequency measurements.
 '''
 
 def ne(docs):
-    # st  = getSentenceTokenizer()
-    # ch  = getChunkParser()
-    # ner = getNameEntityDetector()
-    entities = {}
+    entities = []
 
     for doc in docs:
         # nes = [(ent, ent.label_) ]
         for ent in nlp(doc).ents:
             entities[str(ent)] = ent.label_
-
-    # del st
-    # del ch
-    # del ner
 
     return entities
 
@@ -347,7 +274,7 @@ def getentities(option, opt_str, value, parser):
     if ntype == "ALL":
         selected_nes = nes
     else:
-        selected_nes = [list(filter(lambda n: n[1] == ntype, nesdoc)) for nesdoc in nes]
+        selected_nes = [[n for n in nesdoc if n[1] == ntype] for nesdoc in nes]
 
     if not pretty:
         setattr(parser.values, option.dest, selected_nes)
@@ -413,8 +340,11 @@ Get lsi and lda topics
 '''
 def lsi(docs, num):
     # tokenize each doc, filter punctuation and stop words
-    docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
-    filtered = [f[1] for f in list(map(filter_stop_words, docs))]
+    # docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
+    # filtered = [f[1] for f in list(map(filter_stop_words, docs))]
+    tokens = [nlp(doc) for doc in docs]
+    tokens = [nlp(' '.join(filter_punct(toks))) for toks in tokens]
+    filtered = [filter_stop_words(toks) for toks in tokens]
 
     # create Gensim dictionary and corpus
     dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
@@ -428,9 +358,11 @@ def lsi(docs, num):
 
 def lda(docs, num):
     # tokenize each doc, filter punctuation and stop words
-    docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
-    filtered = [f[1] for f in list(map(filter_stop_words, docs))]
-
+    # docs = list(map(filter_punct, map(nltk.word_tokenize, docs)))
+    # filtered = [f[1] for f in list(map(filter_stop_words, docs))]
+    tokens = [nlp(doc) for doc in docs]
+    tokens = [nlp(' '.join(filter_punct(toks))) for toks in tokens]
+    filtered = [filter_stop_words(toks) for toks in tokens]
     # create Gensim dictionary and corpus
     dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
     corp = [dictionary.doc2bow(reduce(add, filtered))]
@@ -472,8 +404,9 @@ def relations(sents, chunks, nes, ldas):
     nns  = [ 'NN', 'NNS', 'NNP', 'NNPS' ]
     ins  = [ 'of', 'that', 'which', 'like', 'in', 'at', 'as' ]
 
-    nes_merged = dict([(' '.join(n[0]), n[1]) for n in nes])
-    pers_org = dict(filter(lambda t: t[1] == 'PERSON', nes_merged.items()))
+    # nes_merged = dict([(' '.join(n[0]), n[1]) for n in nes])
+    nes_merged = nes
+    pers_org = dict(filter(lambda t: t[1] == 'PERSON', nes_merged))
     # dictionary of dictionaries for each named entity
     retrieved = {}
     # Previously found named entity and the most likely candidate for the attributes
@@ -600,27 +533,45 @@ def getrelationships(option, opt_str, value, parser):
     print("Extracting information from documents at " + src + " ...")
 
     docs = getdocs(src, pretty)
-    ents = ne(docs)
+
     dbs = []
-    for d in docs:
-        doc = nlp(d)
-        merge_spans(doc.ents, doc)
-        merge_spans(doc.noun_chunks, doc)
-        # relations = {}
-        relations = []
-        for tok in doc:
-            if tok.dep_ in ('attr', 'dobj'):
-                subject = [w for w in tok.head.lefts if w.dep_ == 'nsubj']
-                if subject:
-                    subject = subject[0]
-                    # if str(subject) in relations.keys():
-                    #     relations[subject].append([tok])
-                    # else:
-                    #     relations[subject] = [[tok]]
-                    relations.append((subject, tok))
-            elif tok.dep_ == 'pobj' and tok.head.dep_ == 'prep':
-                relations.append((tok.head.head, tok))
-        dbs += relations
+
+    for doc in docs:
+        db = {}
+        # Construct a dictionary of the form: Value of NE, relation, [(attribute, NE tag)]
+        # sents  = st.text2sents(doc)
+        doc = nlp(doc)
+        sents = doc.sents
+        # sents  = [list(filter(lambda x: x not in string.punctuation, sent)) for sent in sents]
+        ldas   = [l for l in lda2dict(lda([doc.text], 2))[0]]
+        chunks = list(doc.noun_chunks)
+        nes = doc.ents
+        ats, rels = relations(sents, chunks, nes, ldas)
+        nes = dict([(' '.join(n[0]), n[1]) for n in nes])
+        for ent in ats.keys():
+            prev_rel = None
+            index = 1
+            if ent in rels.keys():
+                for relation in rels[ent]:
+                    attributes = []
+                    index += 1
+                    if relation != "":
+                        prev_rel = relation
+                        for atrb in ats[ent][0:index]:
+                            if atrb in nes.keys():
+                                attributes.append((atrb, nes[atrb]))
+                            elif ent in nes.keys():
+                                attributes.append((atrb, nes[ent]))
+                        if ent in nes.keys():
+                            dbs += [((ent, nes[ent]), prev_rel, attributes)]
+                        else:
+                            words = ent.split()
+                            for word in words:
+                                if word in nes.keys():
+                                    dbs += [((ent, nes[word]), prev_rel, attributes)]
+                        attributes = []
+                        del ats[ent][0:index]
+                        index = 1
     setattr(parser.values, option.dest, dbs)
 
 # -- COMMAND questions ------------------------------------------------------------------
@@ -690,7 +641,7 @@ parser.add_option("-s", "--summary", help="Offer summary of text. Required src, 
 parser.add_option("-t", "--topics", help="Extract topics from text. Required src, topic_model, no_topics, pretty", action="callback", callback=gettopics, dest="output")
 parser.add_option("-r", "--relationships", help="Extract relationships from text. Required src pretty", action="callback", callback=getrelationships, dest="output")
 parser.add_option("-q", "--question", help="Classify questions. Required question in string format", action="callback", callback=getquestiontype, dest="output")
-parser.add_option("-m", "--freq", help="Return most frequent word. Required src pretty", action="callback", callback=getmostfreq, dest="output")
+parser.add_option("-f", "--freq", help="Return most frequent word. Required src pretty", action="callback", callback=getmostfreq, dest="output")
 
 (options, args) = parser.parse_args()
 print(options.output)
