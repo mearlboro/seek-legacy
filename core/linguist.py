@@ -31,11 +31,6 @@ from gensim import corpora, models, similarities
 import logging
 logger = logging.getLogger('handler')
 
-# from nltk.chunk.util import *
-# from nltk.chunk import *
-# from nltk.chunk.regexp import *
-# from nltk import nonterminals, Production, CFG
-
 # ------------------------------------------------------------------------------------
 # spacy.io
 # ------------------------------------------------------------------------------------
@@ -46,32 +41,6 @@ from spacy.tokens import Doc
 nlp = English()
 print("Dependencies have been loaded")
 # ------------------------------------------------------------------------------------
-''' Import the trained classes from /skills '''
-# def getSentenceTokenizer():
-#     with open('skills/init_sent_tok.pkl','rb') as infile:
-#         st = pickle.load(infile)
-#     return st
-
-# def getChunkParser():
-#     with open('skills/init_chunk.pkl','rb') as infile:
-#         cp = pickle.load(infile)
-#     return cp
-
-# def getNameEntityDetector():
-#     with open('skills/init_ner.pkl','rb') as infile:
-#         ner = pickle.load(infile)
-#     return ner
-
-# def getTopicModelling():
-#     with open('skills/init_tm.pkl','rb') as infile:
-#         tm = pickle.load(infile)
-#     return tm
-
-# def getQuestionClassifier():
-#     with open('skills/init_qc.pkl','rb') as infile:
-#         qc = pickle.load(infile)
-#     return qc
-
 
 ''' Get text from document or directory. '''
 def getdocs(src, pretty):
@@ -304,7 +273,7 @@ def getentities(option, opt_str, value, parser):
     if ntype == "ALL":
         selected_nes = nes
     else:
-        selected_nes = [list(filter(lambda n: n[1] == ntype, nesdoc)) for nesdoc in nes]
+        selected_nes = [[n for n in nesdoc if n[1] == ntype] for nesdoc in nes]
 
     if not pretty:
         setattr(parser.values, option.dest, selected_nes)
