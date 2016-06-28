@@ -17,7 +17,7 @@ Use script by calling $ python linguist.py <command> <source>
 
 # ------------------------------------------------------------------------------------
 
-import os, glob, sys, pickle
+import os, glob, sys, pickle, re
 import string
 from operator  import *
 from itertools import *
@@ -93,11 +93,17 @@ def filter_stop_words(toks):
     corpus_filter = [tok.text for tok in toks if not tok.is_stop]
     return corpus_filter
 
+def normalize(toks):
+    for tok in toks:
+        print(tok.lemma_)
+        print(tok.pos_)
+    return [tok.lemma_ for tok in toks]
+
 # Get the weight of each sentence in a text based on frequency.
-def sentence_freq(text, sents):
+def sentence_freq(tokens, sents):
     # get and filter words
     # words = nltk.word_tokenize(text)
-    tokens = nlp(text)
+    # tokens = nlp(text)
     tokens = nlp(' '.join(filter_punct(tokens)))
     filtered_words = nlp(' '.join(filter_stop_words(tokens)))
 
@@ -149,13 +155,13 @@ When summing frequencies per sentence add bias from topics in that phrase
     sents: the sentences in a document - a list of lists of word and punctuation tokens
     freqs: the output of sentence_frequency(text, sents)
 '''
-def augment_topics(model, text, sents, freqs):
+def augment_topics(model, tokens, sents, freqs):
     num = 10
 
     if model == "LDA":
-        topics = lda2dict(lda([text], num))[1]
+        topics = lda2dict(lda([tokens.text], num))[1]
     elif model == "LSI":
-        topics = lsi2dict(lsi([text], num))
+        topics = lsi2dict(lsi([tokens.text], num))
     else:
         print("Unrecognized model: " + model)
         sys.exit(0)
@@ -173,10 +179,10 @@ When summing frequencies per sentence add bias from named entities in that phras
     sents: the sentences in a document - a list of lists of word and punctuation tokens
     freqs: the output of sentence_frequency(text, sents)
 '''
-def augment_ne(text, sents, freqs):
+def augment_ne(tokens, sents, freqs):
     bias = 2
 
-    nes = ne([text]) # get single-word NEs by means of text analysis
+    nes = ne([tokens.text]) # get single-word NEs by means of text analysis
     nes = [ne[0] for ne in nes] # the words as list
 
     sentfreqs = []
@@ -214,8 +220,8 @@ def getsummary(option, opt_str, value, parser):
     docs = getdocs(src, pretty)
 
     summaries = []
-    for doc in docs:
-        sents = nlp(doc).sents
+    for doc in nlp.pipe(docs, n_threads = 4):
+        sents = doc.sents
         freqs = sentence_freq(doc, sents)
         if model in ["LDA", "LSI"]:
             freqs = augment_topics(model, doc, sents, freqs)
@@ -247,8 +253,8 @@ sentence frequency measurements.
 def ne(docs):
     entities = []
 
-    for doc in docs:
-        nes = [(ent, ent.label_) for ent in nlp(doc).ents]
+    for doc in nlp.pipe(docs, n_threads = 4):
+        nes = [(ent, ent.label_) for ent in doc.ents]
         entities += [nes]
 
     return entities
@@ -268,7 +274,7 @@ def getentities(option, opt_str, value, parser):
         out_text = "Retrieving {} named entities for documents at ..."
         print(out_text.format(type_name, src))
 
-    docs  = getdocs(src, pretty)
+    docs = getdocs(src, pretty)
     nes = ne(docs)
     if ntype == "ALL":
         selected_nes = nes
@@ -303,14 +309,13 @@ def gettopics(option, opt_str, value, parser):
     docs = getdocs(src, pretty)
     topics = []
 
-    for doc in docs:
-        if model == "LSI":
-            topics.append(lsi2dict(lsi(docs, num)))
-        elif model == "LDA":
-            topics.append(lda2dict(lda(docs, num))[0])
-        else:
-            print("Unrecognized model: " + model)
-            sys.exit(0)
+    if model == "LSI":
+        topics.append(lsi2dict(lsi(docs, num)))
+    elif model == "LDA":
+        topics.append(lda2dict(lda(docs, num))[0])
+    else:
+        print("Unrecognized model: " + model)
+        sys.exit(0)
 
     if not pretty:
         setattr(parser.values, option.dest, topics)
@@ -320,7 +325,7 @@ def gettopics(option, opt_str, value, parser):
 def lsi2dict(topics):
     topics = topics[0][1].split('+')
     pairs  = [topic.split('*') for topic in topics]
-    pairs  = [(''.join(list(filter(lambda c:c not in "\" ", pair[1]))), float(pair[0])) for pair in pairs]
+    pairs  = [(''.join(list(filter(lambda c:c not in "\" ", nlp(pair[1])[0].lemma_))), float(pair[0])) for pair in pairs]
     return dict(pairs)
 
 def lda2dict(topics):
@@ -328,7 +333,7 @@ def lda2dict(topics):
     for i in range(len(topics)):
         topic = topics[i][1].split('+')
         pairs = [t.split('*') for t in topic]
-        pairs = [(''.join(list(filter(lambda c:c not in " ", pair[1]))), float(pair[0])) for pair in pairs]
+        pairs = [(''.join(list(filter(lambda c:c not in " ", nlp(pair[1])[0].lemma_))), float(pair[0])) for pair in pairs]
         dicts += [dict(pairs)]
 
     return dicts
@@ -362,6 +367,8 @@ def lda(docs, num):
     tokens = [nlp(doc) for doc in docs]
     tokens = [nlp(' '.join(filter_punct(toks))) for toks in tokens]
     filtered = [filter_stop_words(toks) for toks in tokens]
+    # doc = ' '.join(filtered)
+    # print(filtered)
     # create Gensim dictionary and corpus
     dictionary = corpora.Dictionary(filtered) # choose the text with lowercase words
     corp = [dictionary.doc2bow(reduce(add, filtered))]
@@ -516,43 +523,53 @@ def getrelationships(option, opt_str, value, parser):
     docs = getdocs(src, pretty)
 
     dbs = []
-
-    for doc in docs:
+    nes = ne(docs)
+    for doc in nlp.pipe(docs, n_threads = 4):
+        # print(doc)
         db = {}
         # Construct a dictionary of the form: Value of NE, relation, [(attribute, NE tag)]
         # sents  = st.text2sents(doc)
-        doc = nlp(doc)
         sents = doc.sents
         # sents  = [list(filter(lambda x: x not in string.punctuation, sent)) for sent in sents]
         ldas   = [l for l in lda2dict(lda([doc.text], 2))[0]]
         chunks = list(doc.noun_chunks)
-        nes = doc.ents
-        ats, rels = relations(sents, chunks, nes, ldas)
-        nes = dict([(' '.join(n[0]), n[1]) for n in nes])
-        for ent in ats.keys():
-            prev_rel = None
-            index = 1
-            if ent in rels.keys():
-                for relation in rels[ent]:
-                    attributes = []
-                    index += 1
-                    if relation != "":
-                        prev_rel = relation
-                        for atrb in ats[ent][0:index]:
-                            if atrb in nes.keys():
-                                attributes.append((atrb, nes[atrb]))
-                            elif ent in nes.keys():
-                                attributes.append((atrb, nes[ent]))
-                        if ent in nes.keys():
-                            dbs += [((ent, nes[ent]), prev_rel, attributes)]
-                        else:
-                            words = ent.split()
-                            for word in words:
-                                if word in nes.keys():
-                                    dbs += [((ent, nes[word]), prev_rel, attributes)]
-                        attributes = []
-                        del ats[ent][0:index]
-                        index = 1
+        tokens = nlp(' '.join(filter_punct(doc)))
+        filtered_words = nlp(' '.join(filter_stop_words(tokens)))
+        for fw in filtered_words:
+            if (fw.ent_type != 0):
+                print(fw.text + " <==== " + fw.head.text)
+                print(list(fw.lefts))
+                print(list(fw.rights))
+                print(list(fw.children))
+            # print(fw.text + " <----- " + fw.head.text)
+            # print(list(fw.children))
+        # nes = doc.ents
+        # ats, rels = relations(sents, chunks, nes, ldas)
+        # nes = dict([(' '.join(n[0]), n[1]) for n in nes])
+        # for ent in ats.keys():
+        #     prev_rel = None
+        #     index = 1
+        #     if ent in rels.keys():
+        #         for relation in rels[ent]:
+        #             attributes = []
+        #             index += 1
+        #             if relation != "":
+        #                 prev_rel = relation
+        #                 for atrb in ats[ent][0:index]:
+        #                     if atrb in nes.keys():
+        #                         attributes.append((atrb, nes[atrb]))
+        #                     elif ent in nes.keys():
+        #                         attributes.append((atrb, nes[ent]))
+        #                 if ent in nes.keys():
+        #                     dbs += [((ent, nes[ent]), prev_rel, attributes)]
+        #                 else:
+        #                     words = ent.split()
+        #                     for word in words:
+        #                         if word in nes.keys():
+        #                             dbs += [((ent, nes[word]), prev_rel, attributes)]
+        #                 attributes = []
+        #                 del ats[ent][0:index]
+        #                 index = 1
     setattr(parser.values, option.dest, dbs)
 
 # -- COMMAND questions ------------------------------------------------------------------
