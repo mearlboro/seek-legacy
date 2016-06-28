@@ -533,14 +533,19 @@ def getrelationships(option, opt_str, value, parser):
         # sents  = [list(filter(lambda x: x not in string.punctuation, sent)) for sent in sents]
         ldas   = [l for l in lda2dict(lda([doc.text], 2))[0]]
         chunks = list(doc.noun_chunks)
-        tokens = nlp(' '.join(filter_punct(doc)))
-        filtered_words = nlp(' '.join(filter_stop_words(tokens)))
-        for fw in filtered_words:
-            if (fw.ent_type != 0):
-                print(fw.text + " <==== " + fw.head.text)
-                print(list(fw.lefts))
-                print(list(fw.rights))
-                print(list(fw.children))
+        # tokens = nlp(' '.join(filter_punct(doc)))
+        # filtered_words = nlp(' '.join(filter_stop_words(tokens)))
+        for sent in sents:
+            # print(sent)
+            for tok in sent:
+                print(tok.text + " <==== " + tok.head.text)
+                print(tok.tag_ + " <==== " + tok.head.tag_)
+                # print(list(tok.children))
+        # for fw in sents:
+            # print(fw.text + " <==== " + fw.head.text)
+            # print(list(fw.lefts))
+            # print(list(fw.rights))
+            # print(list(fw.subtree))
             # print(fw.text + " <----- " + fw.head.text)
             # print(list(fw.children))
         # nes = doc.ents
