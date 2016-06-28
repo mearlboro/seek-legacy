@@ -104,7 +104,7 @@ def sentence_freq(text, sents):
     # get vocab and freqs
     voc = vocab(filtered_words)
     freqs = word_freq(filtered_words)
-
+    
     # when summing frequencies per sentence thus use wordfreqs
     sentfreqs = []
     for sent in sents:
@@ -181,7 +181,7 @@ def augment_ne(text, sents, freqs):
 
     sentfreqs = []
     for sent,freq in freqs:
-        sentfreqs +=  [(''.join(sent),
+        sentfreqs +=  [(''.join(sent), 
                         freq * sum([word if word.lower() in nes and bias else 1 for word in sent])
                       )]
     return sentfreqs
@@ -248,9 +248,8 @@ def ne(docs):
     entities = []
 
     for doc in docs:
-        # nes = [(ent, ent.label_) ]
-        for ent in nlp(doc).ents:
-            entities[str(ent)] = ent.label_
+        nes = [(ent, ent.label_) for ent in nlp(doc).ents]
+        entities += [nes]
 
     return entities
 
@@ -505,24 +504,6 @@ is(barack, prezinf)
 person(barack, prezindent of the united states, born in hawaii
 '''
 
-def _span_to_tuple(span):
-    start = span[0].idx
-    end = span[-1].idx + len(span[-1])
-    tag = span.root.tag_
-    text = span.text
-    label = span.label_
-    return (start, end, tag, text, label)
-
-def merge_spans(spans, doc):
-    # This is a bit awkward atm. What we're doing here is merging the entities,
-    # so that each only takes up a single token. But an entity is a Span, and
-    # each Span is a view into the doc. When we merge a span, we invalidate
-    # the other spans. This will get fixed --- but for now the solution
-    # is to gather the information first, before merging.
-    tuples = [_span_to_tuple(span) for span in spans]
-    for span_tuple in tuples:
-        doc.merge(*span_tuple)
-
 def getrelationships(option, opt_str, value, parser):
     args = parser.rargs
     if len(args) < 2:
@@ -581,7 +562,6 @@ Classifies questions based on the question classifier
     takes no args
 '''
 def getquestiontype(option, opt_str, value, parser):
-    # TODO update to use spacy
     text = parser.rargs[0]
     qc  = getQuestionClassifier()
     ner = getNameEntityDetector()
