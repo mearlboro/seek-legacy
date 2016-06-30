@@ -511,6 +511,24 @@ is(barack, prezinf)
 person(barack, prezindent of the united states, born in hawaii
 '''
 
+def _span_to_tuple(span):
+    start = span[0].idx
+    end = span[-1].idx + len(span[-1])
+    tag = span.root.tag_
+    text = span.text
+    label = span.label_
+    return (start, end, tag, text, label)
+
+def merge_spans(spans, doc):
+    # This is a bit awkward atm. What we're doing here is merging the entities,
+    # so that each only takes up a single token. But an entity is a Span, and
+    # each Span is a view into the doc. When we merge a span, we invalidate
+    # the other spans. This will get fixed --- but for now the solution
+    # is to gather the information first, before merging.
+    tuples = [_span_to_tuple(span) for span in spans]
+    for span_tuple in tuples:
+        doc.merge(*span_tuple)
+
 def getrelationships(option, opt_str, value, parser):
     args = parser.rargs
     if len(args) < 2:
@@ -525,6 +543,9 @@ def getrelationships(option, opt_str, value, parser):
     dbs = []
     nes = ne(docs)
     for doc in nlp.pipe(docs, n_threads = 4):
+        merge_spans(doc.ents, doc)
+        merge_spans(doc.noun_chunks, doc)
+
         # print(doc)
         db = {}
         # Construct a dictionary of the form: Value of NE, relation, [(attribute, NE tag)]
@@ -535,11 +556,41 @@ def getrelationships(option, opt_str, value, parser):
         chunks = list(doc.noun_chunks)
         # tokens = nlp(' '.join(filter_punct(doc)))
         # filtered_words = nlp(' '.join(filter_stop_words(tokens)))
-        for sent in sents:
+        for ent in doc:
+            print(ent)
+            print(ent.dep_)
+            if ent.dep_ in ('attr', 'dobj', 'pobj', 'npadvmod'):
+                subject = [w for w in ent.head.lefts if w.dep_.startswith('nsubj')]
+                if subject:
+                    subject = subject[0]
+                    if subject in db.keys():
+                        db[subject].append(ent)
+                    else:
+                        db[subject] = [ent]
+                elif ent.dep_ == 'pobj' and ent.head.dep_ == 'prep' or ent.dep_ == "ROOT" and ent.head.dep_ == 'aux':
+                    if ent.head.head in db.keys():
+                        db[ent.head.head].append(ent)
+                    else:
+                        db[ent.head.head] = [ent]
+            for k in db.keys():
+                for l in db[k]:
+                    if l in db.keys():
+                        db[k] += db[l]
+                        # db.pop(l, 'None')
+            for k in db.keys():
+                for l in db[k]:
+                    if l in db.keys():
+                        db[l] = []
+            rel = {}
+            for k in db.keys():
+                if db[k] != []:
+                    rel[k] = db[k]
+        dbs += [rel]
+        # for sent in sents:
             # print(sent)
-            for tok in sent:
-                print(tok.text + " <==== " + tok.head.text)
-                print(tok.tag_ + " <==== " + tok.head.tag_)
+            # for tok in sent:
+                # print(tok.text + " <==== " + tok.head.text)
+                # print(tok.tag_ + " <==== " + tok.head.tag_)
                 # print(list(tok.children))
         # for fw in sents:
             # print(fw.text + " <==== " + fw.head.text)
