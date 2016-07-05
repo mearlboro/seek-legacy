@@ -526,8 +526,14 @@ def merge_spans(spans, doc):
     # the other spans. This will get fixed --- but for now the solution
     # is to gather the information first, before merging.
     tuples = [_span_to_tuple(span) for span in spans]
+    print(tuples)
     for span_tuple in tuples:
         doc.merge(*span_tuple)
+
+def merge_ents(doc):
+    for ent in doc:
+        if ent in doc.ents:
+            print(ent)
 
 def getrelationships(option, opt_str, value, parser):
     args = parser.rargs
@@ -543,10 +549,12 @@ def getrelationships(option, opt_str, value, parser):
     dbs = []
     nes = ne(docs)
     for doc in nlp.pipe(docs, n_threads = 4):
-        merge_spans(doc.ents, doc)
-        merge_spans(doc.noun_chunks, doc)
-
-        # print(doc)
+        # ents = [(ent, ent.label_) for ent in doc.ents]
+        # print(ents)
+        # merge_spans(doc.ents, doc)
+        # merge_spans(doc.noun_chunks, doc)
+        # ents = [(ent, ent.label_) for ent in doc.ents]
+        # print(ents)
         db = {}
         # Construct a dictionary of the form: Value of NE, relation, [(attribute, NE tag)]
         # sents  = st.text2sents(doc)
@@ -556,11 +564,21 @@ def getrelationships(option, opt_str, value, parser):
         chunks = list(doc.noun_chunks)
         # tokens = nlp(' '.join(filter_punct(doc)))
         # filtered_words = nlp(' '.join(filter_stop_words(tokens)))
+        # print(doc.ents)
         for ent in doc:
-            print(ent)
-            print(ent.dep_)
+            merge_spans(doc.ents, doc)
+            merge_spans(doc.noun_chunks, doc)
+            
+            # Joining Barack with Obama, United with States
+            # if ent.dep_ in ('compound'):
+                # print(ent.text + ' ' + ent.head.text)
+
+
+            if ent.pos_ in ('VERB') and ent.dep_ in ('ROOT', 'conj'):
+                relation = [w for w in ent.head.lefts if w.pos_ in ('VERB', 'aux')] + [ent]
+                print(relation)
             if ent.dep_ in ('attr', 'dobj', 'pobj', 'npadvmod'):
-                subject = [w for w in ent.head.lefts if w.dep_.startswith('nsubj')]
+                subject = [w for w in ent.lefts if w.dep_.startswith('nsubj')]
                 if subject:
                     subject = subject[0]
                     if subject in db.keys():
